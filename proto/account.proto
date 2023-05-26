@@ -1,0 +1,45 @@
+syntax = "proto3";
+package training;
+option go_package = "./;pb";
+
+import "google/protobuf/timestamp.proto";
+import "customer.proto";
+
+service AccountService{
+rpc Signup(SingupRequest) returns (Account);
+rpc Login(LoginRequest) returns(LoginResponse);
+}
+enum Role {
+    Admin_role = 0;
+    Subscriber_role = 1;
+    Customer_role = 2;
+}enum AccountStatus{
+        Inactive = 0;
+        Active = 1;
+    }
+
+message Account{
+string id = 1;
+string email = 2;
+string password = 3;
+Role role = 4;
+Customer acc_owner = 5;
+AccountStatus acc_status = 6;
+google.protobuf.Timestamp created_at = 7;
+google.protobuf.Timestamp update_at = 8;
+}
+message SingupRequest {
+string email = 1;
+string password = 2;
+Role role = 3;
+string acc_owner = 4;
+ }
+message LoginRequest{
+string email = 1;
+string password =2;
+ }
+
+message LoginResponse{
+    string token = 1;
+    bool status = 2;
+}

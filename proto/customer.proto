@@ -1,0 +1,9 @@
+syntax = "proto3";
+package training;
+option go_package = "./;pb";
+
+service CustomerService{
+
+}
+
+message Customer{}

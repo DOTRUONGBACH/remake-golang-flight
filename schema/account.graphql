@@ -1,0 +1,57 @@
+type Account {
+id : ID!
+email: String!
+password: String!
+role : Role!
+createdAt: Time
+updatedAt: Time
+}
+
+enum AccountStatus {
+    Inactive
+    Active
+}
+
+enum AccountOrderfield{
+ID
+EMAIL
+CREATED_AT
+UPDATED_AT
+}
+
+type AccountConnection{
+edges: [AccountEdge]
+pageInfo: PageInfo!
+totalCount: Int!
+}
+
+type AccountEdge {
+    node: Account
+    cursor: Cursor!
+}
+
+input CustomerInput{
+    name: String!
+    citizenId: String!
+    phone: String!
+    address: String!
+    gender: CustomerGender!
+    dob: Time!
+}
+
+input Signup {
+    customer: CustomerInput!
+    email: String!
+    password: String!
+    role: Role!
+}
+
+input Login {
+email: String!
+password: String!
+}
+
+type AccountLoginResponse{
+    token: String!
+    status: Boolean!
+}

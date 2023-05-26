@@ -1,0 +1,41 @@
+type Customer {
+    id: ID!
+    name: String!
+    citizenId: String!
+    phone: String!
+    address: String!
+    gender: CustomerGender!
+    dob: Time!
+    createdAt: Time
+    updatedAt: Time
+}
+
+enum CustomerGender {
+    Male
+    Female
+    Other
+}
+
+enum CustomerOrderField {
+    ID
+    NAME
+    EMAIL
+    CREATED_AT
+    UPDATED_AT
+}
+
+input CustomerOrder {
+    direction: OrderDirection!
+    field: CustomerOrderField
+}
+
+type CustomerConnection {
+    edges: [CustomerEdge]
+    pageInfo: PageInfo!
+    totalCount: Int!
+}
+
+type CustomerEdge {
+    node: Customer
+    cursor: Cursor!
+}
