@@ -17,7 +17,7 @@ type Customer struct {
 
 func (Customer) Field() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).Default(uuid.New()).Annotations(entgql.OrderField("ID")),
+		field.UUID("id", uuid.UUID{}).Default(uuid.New).Annotations(entgql.OrderField("ID")),
 		field.String("fullname").Annotations(entgql.OrderField("FULLNAME")),
 		field.String("phone").Annotations(entgql.OrderField("PHONE")),
 		field.String("address").Annotations(entgql.OrderField("ADDRESS")),

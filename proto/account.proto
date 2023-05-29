@@ -32,7 +32,7 @@ message SingupRequest {
 string email = 1;
 string password = 2;
 Role role = 3;
-string acc_owner = 4;
+string acc_owner_id = 4;
  }
 message LoginRequest{
 string email = 1;
