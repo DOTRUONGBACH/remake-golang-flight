@@ -6,16 +6,34 @@ import (
 	"fmt"
 	"jet/ent/customer"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 )
 
 // Customer is the model entity for the Customer schema.
 type Customer struct {
-	config
+	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
+	ID uuid.UUID `json:"id,omitempty"`
+	// Fullname holds the value of the "fullname" field.
+	Fullname string `json:"fullname,omitempty"`
+	// Phone holds the value of the "phone" field.
+	Phone string `json:"phone,omitempty"`
+	// Address holds the value of the "address" field.
+	Address string `json:"address,omitempty"`
+	// Gender holds the value of the "gender" field.
+	Gender customer.Gender `json:"gender,omitempty"`
+	// CitizenID holds the value of the "citizen_id" field.
+	CitizenID string `json:"citizen_id,omitempty"`
+	// DateOfBirth holds the value of the "date_of_birth" field.
+	DateOfBirth time.Time `json:"date_of_birth,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the CustomerQuery when eager-loading is set.
 	Edges        CustomerEdges `json:"edges"`
@@ -45,8 +63,12 @@ func (*Customer) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case customer.FieldFullname, customer.FieldPhone, customer.FieldAddress, customer.FieldGender, customer.FieldCitizenID:
+			values[i] = new(sql.NullString)
+		case customer.FieldDateOfBirth, customer.FieldCreatedAt, customer.FieldUpdatedAt:
+			values[i] = new(sql.NullTime)
 		case customer.FieldID:
-			values[i] = new(sql.NullInt64)
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -63,11 +85,59 @@ func (c *Customer) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case customer.FieldID:
-			value, ok := values[i].(*sql.NullInt64)
-			if !ok {
-				return fmt.Errorf("unexpected type %T for field id", value)
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value != nil {
+				c.ID = *value
 			}
-			c.ID = int(value.Int64)
+		case customer.FieldFullname:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field fullname", values[i])
+			} else if value.Valid {
+				c.Fullname = value.String
+			}
+		case customer.FieldPhone:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field phone", values[i])
+			} else if value.Valid {
+				c.Phone = value.String
+			}
+		case customer.FieldAddress:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field address", values[i])
+			} else if value.Valid {
+				c.Address = value.String
+			}
+		case customer.FieldGender:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field gender", values[i])
+			} else if value.Valid {
+				c.Gender = customer.Gender(value.String)
+			}
+		case customer.FieldCitizenID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field citizen_id", values[i])
+			} else if value.Valid {
+				c.CitizenID = value.String
+			}
+		case customer.FieldDateOfBirth:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field date_of_birth", values[i])
+			} else if value.Valid {
+				c.DateOfBirth = value.Time
+			}
+		case customer.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				c.CreatedAt = value.Time
+			}
+		case customer.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				c.UpdatedAt = value.Time
+			}
 		default:
 			c.selectValues.Set(columns[i], values[i])
 		}
@@ -108,7 +178,30 @@ func (c *Customer) Unwrap() *Customer {
 func (c *Customer) String() string {
 	var builder strings.Builder
 	builder.WriteString("Customer(")
-	builder.WriteString(fmt.Sprintf("id=%v", c.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", c.ID))
+	builder.WriteString("fullname=")
+	builder.WriteString(c.Fullname)
+	builder.WriteString(", ")
+	builder.WriteString("phone=")
+	builder.WriteString(c.Phone)
+	builder.WriteString(", ")
+	builder.WriteString("address=")
+	builder.WriteString(c.Address)
+	builder.WriteString(", ")
+	builder.WriteString("gender=")
+	builder.WriteString(fmt.Sprintf("%v", c.Gender))
+	builder.WriteString(", ")
+	builder.WriteString("citizen_id=")
+	builder.WriteString(c.CitizenID)
+	builder.WriteString(", ")
+	builder.WriteString("date_of_birth=")
+	builder.WriteString(c.DateOfBirth.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(c.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(c.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

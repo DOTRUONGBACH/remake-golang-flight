@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // CustomerQuery is the builder for querying Customer entities.
@@ -106,8 +107,8 @@ func (cq *CustomerQuery) FirstX(ctx context.Context) *Customer {
 
 // FirstID returns the first Customer ID from the query.
 // Returns a *NotFoundError when no Customer ID was found.
-func (cq *CustomerQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (cq *CustomerQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = cq.Limit(1).IDs(setContextOp(ctx, cq.ctx, "FirstID")); err != nil {
 		return
 	}
@@ -119,7 +120,7 @@ func (cq *CustomerQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (cq *CustomerQuery) FirstIDX(ctx context.Context) int {
+func (cq *CustomerQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := cq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -157,8 +158,8 @@ func (cq *CustomerQuery) OnlyX(ctx context.Context) *Customer {
 // OnlyID is like Only, but returns the only Customer ID in the query.
 // Returns a *NotSingularError when more than one Customer ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (cq *CustomerQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (cq *CustomerQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = cq.Limit(2).IDs(setContextOp(ctx, cq.ctx, "OnlyID")); err != nil {
 		return
 	}
@@ -174,7 +175,7 @@ func (cq *CustomerQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (cq *CustomerQuery) OnlyIDX(ctx context.Context) int {
+func (cq *CustomerQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := cq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -202,7 +203,7 @@ func (cq *CustomerQuery) AllX(ctx context.Context) []*Customer {
 }
 
 // IDs executes the query and returns a list of Customer IDs.
-func (cq *CustomerQuery) IDs(ctx context.Context) (ids []int, err error) {
+func (cq *CustomerQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if cq.ctx.Unique == nil && cq.path != nil {
 		cq.Unique(true)
 	}
@@ -214,7 +215,7 @@ func (cq *CustomerQuery) IDs(ctx context.Context) (ids []int, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (cq *CustomerQuery) IDsX(ctx context.Context) []int {
+func (cq *CustomerQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := cq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -294,6 +295,18 @@ func (cq *CustomerQuery) WithAccounts(opts ...func(*AccountQuery)) *CustomerQuer
 
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
+//
+// Example:
+//
+//	var v []struct {
+//		Fullname string `json:"fullname,omitempty"`
+//		Count int `json:"count,omitempty"`
+//	}
+//
+//	client.Customer.Query().
+//		GroupBy(customer.FieldFullname).
+//		Aggregate(ent.Count()).
+//		Scan(ctx, &v)
 func (cq *CustomerQuery) GroupBy(field string, fields ...string) *CustomerGroupBy {
 	cq.ctx.Fields = append([]string{field}, fields...)
 	grbuild := &CustomerGroupBy{build: cq}
@@ -305,6 +318,16 @@ func (cq *CustomerQuery) GroupBy(field string, fields ...string) *CustomerGroupB
 
 // Select allows the selection one or more fields/columns for the given query,
 // instead of selecting all fields in the entity.
+//
+// Example:
+//
+//	var v []struct {
+//		Fullname string `json:"fullname,omitempty"`
+//	}
+//
+//	client.Customer.Query().
+//		Select(customer.FieldFullname).
+//		Scan(ctx, &v)
 func (cq *CustomerQuery) Select(fields ...string) *CustomerSelect {
 	cq.ctx.Fields = append(cq.ctx.Fields, fields...)
 	sbuild := &CustomerSelect{CustomerQuery: cq}
@@ -382,7 +405,7 @@ func (cq *CustomerQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cus
 
 func (cq *CustomerQuery) loadAccounts(ctx context.Context, query *AccountQuery, nodes []*Customer, init func(*Customer), assign func(*Customer, *Account)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Customer)
+	nodeids := make(map[uuid.UUID]*Customer)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -422,7 +445,7 @@ func (cq *CustomerQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (cq *CustomerQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(customer.Table, customer.Columns, sqlgraph.NewFieldSpec(customer.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewQuerySpec(customer.Table, customer.Columns, sqlgraph.NewFieldSpec(customer.FieldID, field.TypeUUID))
 	_spec.From = cq.sql
 	if unique := cq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

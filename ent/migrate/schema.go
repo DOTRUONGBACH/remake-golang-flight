@@ -17,7 +17,7 @@ var (
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"inactive", "active"}},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "customer_accounts", Type: field.TypeInt, Nullable: true},
+		{Name: "customer_accounts", Type: field.TypeUUID, Nullable: true},
 	}
 	// AccountsTable holds the schema information for the "accounts" table.
 	AccountsTable = &schema.Table{
@@ -35,7 +35,15 @@ var (
 	}
 	// CustomersColumns holds the columns for the "customers" table.
 	CustomersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "fullname", Type: field.TypeString},
+		{Name: "phone", Type: field.TypeString},
+		{Name: "address", Type: field.TypeString},
+		{Name: "gender", Type: field.TypeEnum, Enums: []string{"male", "female", "other"}},
+		{Name: "citizen_id", Type: field.TypeString, Unique: true, Size: 12},
+		{Name: "date_of_birth", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 	}
 	// CustomersTable holds the schema information for the "customers" table.
 	CustomersTable = &schema.Table{

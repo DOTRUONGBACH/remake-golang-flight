@@ -9,6 +9,7 @@ import (
 	"jet/ent/account"
 	"jet/ent/customer"
 	"jet/ent/predicate"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -26,6 +27,48 @@ type CustomerUpdate struct {
 // Where appends a list predicates to the CustomerUpdate builder.
 func (cu *CustomerUpdate) Where(ps ...predicate.Customer) *CustomerUpdate {
 	cu.mutation.Where(ps...)
+	return cu
+}
+
+// SetFullname sets the "fullname" field.
+func (cu *CustomerUpdate) SetFullname(s string) *CustomerUpdate {
+	cu.mutation.SetFullname(s)
+	return cu
+}
+
+// SetPhone sets the "phone" field.
+func (cu *CustomerUpdate) SetPhone(s string) *CustomerUpdate {
+	cu.mutation.SetPhone(s)
+	return cu
+}
+
+// SetAddress sets the "address" field.
+func (cu *CustomerUpdate) SetAddress(s string) *CustomerUpdate {
+	cu.mutation.SetAddress(s)
+	return cu
+}
+
+// SetGender sets the "gender" field.
+func (cu *CustomerUpdate) SetGender(c customer.Gender) *CustomerUpdate {
+	cu.mutation.SetGender(c)
+	return cu
+}
+
+// SetCitizenID sets the "citizen_id" field.
+func (cu *CustomerUpdate) SetCitizenID(s string) *CustomerUpdate {
+	cu.mutation.SetCitizenID(s)
+	return cu
+}
+
+// SetDateOfBirth sets the "date_of_birth" field.
+func (cu *CustomerUpdate) SetDateOfBirth(t time.Time) *CustomerUpdate {
+	cu.mutation.SetDateOfBirth(t)
+	return cu
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (cu *CustomerUpdate) SetUpdatedAt(t time.Time) *CustomerUpdate {
+	cu.mutation.SetUpdatedAt(t)
 	return cu
 }
 
@@ -72,6 +115,7 @@ func (cu *CustomerUpdate) RemoveAccounts(a ...*Account) *CustomerUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (cu *CustomerUpdate) Save(ctx context.Context) (int, error) {
+	cu.defaults()
 	return withHooks(ctx, cu.sqlSave, cu.mutation, cu.hooks)
 }
 
@@ -97,14 +141,61 @@ func (cu *CustomerUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (cu *CustomerUpdate) defaults() {
+	if _, ok := cu.mutation.UpdatedAt(); !ok {
+		v := customer.UpdateDefaultUpdatedAt()
+		cu.mutation.SetUpdatedAt(v)
+	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (cu *CustomerUpdate) check() error {
+	if v, ok := cu.mutation.Gender(); ok {
+		if err := customer.GenderValidator(v); err != nil {
+			return &ValidationError{Name: "gender", err: fmt.Errorf(`ent: validator failed for field "Customer.gender": %w`, err)}
+		}
+	}
+	if v, ok := cu.mutation.CitizenID(); ok {
+		if err := customer.CitizenIDValidator(v); err != nil {
+			return &ValidationError{Name: "citizen_id", err: fmt.Errorf(`ent: validator failed for field "Customer.citizen_id": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (cu *CustomerUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(customer.Table, customer.Columns, sqlgraph.NewFieldSpec(customer.FieldID, field.TypeInt))
+	if err := cu.check(); err != nil {
+		return n, err
+	}
+	_spec := sqlgraph.NewUpdateSpec(customer.Table, customer.Columns, sqlgraph.NewFieldSpec(customer.FieldID, field.TypeUUID))
 	if ps := cu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := cu.mutation.Fullname(); ok {
+		_spec.SetField(customer.FieldFullname, field.TypeString, value)
+	}
+	if value, ok := cu.mutation.Phone(); ok {
+		_spec.SetField(customer.FieldPhone, field.TypeString, value)
+	}
+	if value, ok := cu.mutation.Address(); ok {
+		_spec.SetField(customer.FieldAddress, field.TypeString, value)
+	}
+	if value, ok := cu.mutation.Gender(); ok {
+		_spec.SetField(customer.FieldGender, field.TypeEnum, value)
+	}
+	if value, ok := cu.mutation.CitizenID(); ok {
+		_spec.SetField(customer.FieldCitizenID, field.TypeString, value)
+	}
+	if value, ok := cu.mutation.DateOfBirth(); ok {
+		_spec.SetField(customer.FieldDateOfBirth, field.TypeTime, value)
+	}
+	if value, ok := cu.mutation.UpdatedAt(); ok {
+		_spec.SetField(customer.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if cu.mutation.AccountsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -171,6 +262,48 @@ type CustomerUpdateOne struct {
 	mutation *CustomerMutation
 }
 
+// SetFullname sets the "fullname" field.
+func (cuo *CustomerUpdateOne) SetFullname(s string) *CustomerUpdateOne {
+	cuo.mutation.SetFullname(s)
+	return cuo
+}
+
+// SetPhone sets the "phone" field.
+func (cuo *CustomerUpdateOne) SetPhone(s string) *CustomerUpdateOne {
+	cuo.mutation.SetPhone(s)
+	return cuo
+}
+
+// SetAddress sets the "address" field.
+func (cuo *CustomerUpdateOne) SetAddress(s string) *CustomerUpdateOne {
+	cuo.mutation.SetAddress(s)
+	return cuo
+}
+
+// SetGender sets the "gender" field.
+func (cuo *CustomerUpdateOne) SetGender(c customer.Gender) *CustomerUpdateOne {
+	cuo.mutation.SetGender(c)
+	return cuo
+}
+
+// SetCitizenID sets the "citizen_id" field.
+func (cuo *CustomerUpdateOne) SetCitizenID(s string) *CustomerUpdateOne {
+	cuo.mutation.SetCitizenID(s)
+	return cuo
+}
+
+// SetDateOfBirth sets the "date_of_birth" field.
+func (cuo *CustomerUpdateOne) SetDateOfBirth(t time.Time) *CustomerUpdateOne {
+	cuo.mutation.SetDateOfBirth(t)
+	return cuo
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (cuo *CustomerUpdateOne) SetUpdatedAt(t time.Time) *CustomerUpdateOne {
+	cuo.mutation.SetUpdatedAt(t)
+	return cuo
+}
+
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
 func (cuo *CustomerUpdateOne) AddAccountIDs(ids ...uuid.UUID) *CustomerUpdateOne {
 	cuo.mutation.AddAccountIDs(ids...)
@@ -227,6 +360,7 @@ func (cuo *CustomerUpdateOne) Select(field string, fields ...string) *CustomerUp
 
 // Save executes the query and returns the updated Customer entity.
 func (cuo *CustomerUpdateOne) Save(ctx context.Context) (*Customer, error) {
+	cuo.defaults()
 	return withHooks(ctx, cuo.sqlSave, cuo.mutation, cuo.hooks)
 }
 
@@ -252,8 +386,34 @@ func (cuo *CustomerUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (cuo *CustomerUpdateOne) defaults() {
+	if _, ok := cuo.mutation.UpdatedAt(); !ok {
+		v := customer.UpdateDefaultUpdatedAt()
+		cuo.mutation.SetUpdatedAt(v)
+	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (cuo *CustomerUpdateOne) check() error {
+	if v, ok := cuo.mutation.Gender(); ok {
+		if err := customer.GenderValidator(v); err != nil {
+			return &ValidationError{Name: "gender", err: fmt.Errorf(`ent: validator failed for field "Customer.gender": %w`, err)}
+		}
+	}
+	if v, ok := cuo.mutation.CitizenID(); ok {
+		if err := customer.CitizenIDValidator(v); err != nil {
+			return &ValidationError{Name: "citizen_id", err: fmt.Errorf(`ent: validator failed for field "Customer.citizen_id": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (cuo *CustomerUpdateOne) sqlSave(ctx context.Context) (_node *Customer, err error) {
-	_spec := sqlgraph.NewUpdateSpec(customer.Table, customer.Columns, sqlgraph.NewFieldSpec(customer.FieldID, field.TypeInt))
+	if err := cuo.check(); err != nil {
+		return _node, err
+	}
+	_spec := sqlgraph.NewUpdateSpec(customer.Table, customer.Columns, sqlgraph.NewFieldSpec(customer.FieldID, field.TypeUUID))
 	id, ok := cuo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Customer.id" for update`)}
@@ -277,6 +437,27 @@ func (cuo *CustomerUpdateOne) sqlSave(ctx context.Context) (_node *Customer, err
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := cuo.mutation.Fullname(); ok {
+		_spec.SetField(customer.FieldFullname, field.TypeString, value)
+	}
+	if value, ok := cuo.mutation.Phone(); ok {
+		_spec.SetField(customer.FieldPhone, field.TypeString, value)
+	}
+	if value, ok := cuo.mutation.Address(); ok {
+		_spec.SetField(customer.FieldAddress, field.TypeString, value)
+	}
+	if value, ok := cuo.mutation.Gender(); ok {
+		_spec.SetField(customer.FieldGender, field.TypeEnum, value)
+	}
+	if value, ok := cuo.mutation.CitizenID(); ok {
+		_spec.SetField(customer.FieldCitizenID, field.TypeString, value)
+	}
+	if value, ok := cuo.mutation.DateOfBirth(); ok {
+		_spec.SetField(customer.FieldDateOfBirth, field.TypeTime, value)
+	}
+	if value, ok := cuo.mutation.UpdatedAt(); ok {
+		_spec.SetField(customer.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if cuo.mutation.AccountsCleared() {
 		edge := &sqlgraph.EdgeSpec{

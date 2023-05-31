@@ -410,8 +410,8 @@ func (aq *AccountQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Acco
 }
 
 func (aq *AccountQuery) loadAccOwner(ctx context.Context, query *CustomerQuery, nodes []*Account, init func(*Account), assign func(*Account, *Customer)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*Account)
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Account)
 	for i := range nodes {
 		if nodes[i].customer_accounts == nil {
 			continue

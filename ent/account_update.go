@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // AccountUpdate is the builder for updating Account entities.
@@ -60,13 +61,13 @@ func (au *AccountUpdate) SetUpdatedAt(t time.Time) *AccountUpdate {
 }
 
 // SetAccOwnerID sets the "acc_owner" edge to the Customer entity by ID.
-func (au *AccountUpdate) SetAccOwnerID(id int) *AccountUpdate {
+func (au *AccountUpdate) SetAccOwnerID(id uuid.UUID) *AccountUpdate {
 	au.mutation.SetAccOwnerID(id)
 	return au
 }
 
 // SetNillableAccOwnerID sets the "acc_owner" edge to the Customer entity by ID if the given value is not nil.
-func (au *AccountUpdate) SetNillableAccOwnerID(id *int) *AccountUpdate {
+func (au *AccountUpdate) SetNillableAccOwnerID(id *uuid.UUID) *AccountUpdate {
 	if id != nil {
 		au = au.SetAccOwnerID(*id)
 	}
@@ -175,7 +176,7 @@ func (au *AccountUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{account.AccOwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -188,7 +189,7 @@ func (au *AccountUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{account.AccOwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -247,13 +248,13 @@ func (auo *AccountUpdateOne) SetUpdatedAt(t time.Time) *AccountUpdateOne {
 }
 
 // SetAccOwnerID sets the "acc_owner" edge to the Customer entity by ID.
-func (auo *AccountUpdateOne) SetAccOwnerID(id int) *AccountUpdateOne {
+func (auo *AccountUpdateOne) SetAccOwnerID(id uuid.UUID) *AccountUpdateOne {
 	auo.mutation.SetAccOwnerID(id)
 	return auo
 }
 
 // SetNillableAccOwnerID sets the "acc_owner" edge to the Customer entity by ID if the given value is not nil.
-func (auo *AccountUpdateOne) SetNillableAccOwnerID(id *int) *AccountUpdateOne {
+func (auo *AccountUpdateOne) SetNillableAccOwnerID(id *uuid.UUID) *AccountUpdateOne {
 	if id != nil {
 		auo = auo.SetAccOwnerID(*id)
 	}
@@ -392,7 +393,7 @@ func (auo *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err e
 			Columns: []string{account.AccOwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -405,7 +406,7 @@ func (auo *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err e
 			Columns: []string{account.AccOwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

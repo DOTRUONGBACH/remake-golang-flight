@@ -3,8 +3,12 @@
 package customer
 
 import (
+	"fmt"
+	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/google/uuid"
 )
 
 const (
@@ -12,6 +16,22 @@ const (
 	Label = "customer"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldFullname holds the string denoting the fullname field in the database.
+	FieldFullname = "fullname"
+	// FieldPhone holds the string denoting the phone field in the database.
+	FieldPhone = "phone"
+	// FieldAddress holds the string denoting the address field in the database.
+	FieldAddress = "address"
+	// FieldGender holds the string denoting the gender field in the database.
+	FieldGender = "gender"
+	// FieldCitizenID holds the string denoting the citizen_id field in the database.
+	FieldCitizenID = "citizen_id"
+	// FieldDateOfBirth holds the string denoting the date_of_birth field in the database.
+	FieldDateOfBirth = "date_of_birth"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
 	// EdgeAccounts holds the string denoting the accounts edge name in mutations.
 	EdgeAccounts = "accounts"
 	// Table holds the table name of the customer in the database.
@@ -28,6 +48,14 @@ const (
 // Columns holds all SQL columns for customer fields.
 var Columns = []string{
 	FieldID,
+	FieldFullname,
+	FieldPhone,
+	FieldAddress,
+	FieldGender,
+	FieldCitizenID,
+	FieldDateOfBirth,
+	FieldCreatedAt,
+	FieldUpdatedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -40,12 +68,89 @@ func ValidColumn(column string) bool {
 	return false
 }
 
+var (
+	// CitizenIDValidator is a validator for the "citizen_id" field. It is called by the builders before save.
+	CitizenIDValidator func(string) error
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
+	DefaultCreatedAt func() time.Time
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultID holds the default value on creation for the "id" field.
+	DefaultID func() uuid.UUID
+)
+
+// Gender defines the type for the "gender" enum field.
+type Gender string
+
+// Gender values.
+const (
+	GenderMale   Gender = "male"
+	GenderFemale Gender = "female"
+	GenderOther  Gender = "other"
+)
+
+func (ge Gender) String() string {
+	return string(ge)
+}
+
+// GenderValidator is a validator for the "gender" field enum values. It is called by the builders before save.
+func GenderValidator(ge Gender) error {
+	switch ge {
+	case GenderMale, GenderFemale, GenderOther:
+		return nil
+	default:
+		return fmt.Errorf("customer: invalid enum value for gender field: %q", ge)
+	}
+}
+
 // OrderOption defines the ordering options for the Customer queries.
 type OrderOption func(*sql.Selector)
 
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByFullname orders the results by the fullname field.
+func ByFullname(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFullname, opts...).ToFunc()
+}
+
+// ByPhone orders the results by the phone field.
+func ByPhone(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPhone, opts...).ToFunc()
+}
+
+// ByAddress orders the results by the address field.
+func ByAddress(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAddress, opts...).ToFunc()
+}
+
+// ByGender orders the results by the gender field.
+func ByGender(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldGender, opts...).ToFunc()
+}
+
+// ByCitizenID orders the results by the citizen_id field.
+func ByCitizenID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCitizenID, opts...).ToFunc()
+}
+
+// ByDateOfBirth orders the results by the date_of_birth field.
+func ByDateOfBirth(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateOfBirth, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
 // ByAccountsCount orders the results by accounts count.

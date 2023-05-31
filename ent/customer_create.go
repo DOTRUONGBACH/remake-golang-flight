@@ -4,9 +4,11 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"jet/ent/account"
 	"jet/ent/customer"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -18,6 +20,84 @@ type CustomerCreate struct {
 	config
 	mutation *CustomerMutation
 	hooks    []Hook
+}
+
+// SetFullname sets the "fullname" field.
+func (cc *CustomerCreate) SetFullname(s string) *CustomerCreate {
+	cc.mutation.SetFullname(s)
+	return cc
+}
+
+// SetPhone sets the "phone" field.
+func (cc *CustomerCreate) SetPhone(s string) *CustomerCreate {
+	cc.mutation.SetPhone(s)
+	return cc
+}
+
+// SetAddress sets the "address" field.
+func (cc *CustomerCreate) SetAddress(s string) *CustomerCreate {
+	cc.mutation.SetAddress(s)
+	return cc
+}
+
+// SetGender sets the "gender" field.
+func (cc *CustomerCreate) SetGender(c customer.Gender) *CustomerCreate {
+	cc.mutation.SetGender(c)
+	return cc
+}
+
+// SetCitizenID sets the "citizen_id" field.
+func (cc *CustomerCreate) SetCitizenID(s string) *CustomerCreate {
+	cc.mutation.SetCitizenID(s)
+	return cc
+}
+
+// SetDateOfBirth sets the "date_of_birth" field.
+func (cc *CustomerCreate) SetDateOfBirth(t time.Time) *CustomerCreate {
+	cc.mutation.SetDateOfBirth(t)
+	return cc
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (cc *CustomerCreate) SetCreatedAt(t time.Time) *CustomerCreate {
+	cc.mutation.SetCreatedAt(t)
+	return cc
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (cc *CustomerCreate) SetNillableCreatedAt(t *time.Time) *CustomerCreate {
+	if t != nil {
+		cc.SetCreatedAt(*t)
+	}
+	return cc
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (cc *CustomerCreate) SetUpdatedAt(t time.Time) *CustomerCreate {
+	cc.mutation.SetUpdatedAt(t)
+	return cc
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (cc *CustomerCreate) SetNillableUpdatedAt(t *time.Time) *CustomerCreate {
+	if t != nil {
+		cc.SetUpdatedAt(*t)
+	}
+	return cc
+}
+
+// SetID sets the "id" field.
+func (cc *CustomerCreate) SetID(u uuid.UUID) *CustomerCreate {
+	cc.mutation.SetID(u)
+	return cc
+}
+
+// SetNillableID sets the "id" field if the given value is not nil.
+func (cc *CustomerCreate) SetNillableID(u *uuid.UUID) *CustomerCreate {
+	if u != nil {
+		cc.SetID(*u)
+	}
+	return cc
 }
 
 // AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
@@ -42,6 +122,7 @@ func (cc *CustomerCreate) Mutation() *CustomerMutation {
 
 // Save creates the Customer in the database.
 func (cc *CustomerCreate) Save(ctx context.Context) (*Customer, error) {
+	cc.defaults()
 	return withHooks(ctx, cc.sqlSave, cc.mutation, cc.hooks)
 }
 
@@ -67,8 +148,58 @@ func (cc *CustomerCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (cc *CustomerCreate) defaults() {
+	if _, ok := cc.mutation.CreatedAt(); !ok {
+		v := customer.DefaultCreatedAt()
+		cc.mutation.SetCreatedAt(v)
+	}
+	if _, ok := cc.mutation.UpdatedAt(); !ok {
+		v := customer.DefaultUpdatedAt()
+		cc.mutation.SetUpdatedAt(v)
+	}
+	if _, ok := cc.mutation.ID(); !ok {
+		v := customer.DefaultID()
+		cc.mutation.SetID(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (cc *CustomerCreate) check() error {
+	if _, ok := cc.mutation.Fullname(); !ok {
+		return &ValidationError{Name: "fullname", err: errors.New(`ent: missing required field "Customer.fullname"`)}
+	}
+	if _, ok := cc.mutation.Phone(); !ok {
+		return &ValidationError{Name: "phone", err: errors.New(`ent: missing required field "Customer.phone"`)}
+	}
+	if _, ok := cc.mutation.Address(); !ok {
+		return &ValidationError{Name: "address", err: errors.New(`ent: missing required field "Customer.address"`)}
+	}
+	if _, ok := cc.mutation.Gender(); !ok {
+		return &ValidationError{Name: "gender", err: errors.New(`ent: missing required field "Customer.gender"`)}
+	}
+	if v, ok := cc.mutation.Gender(); ok {
+		if err := customer.GenderValidator(v); err != nil {
+			return &ValidationError{Name: "gender", err: fmt.Errorf(`ent: validator failed for field "Customer.gender": %w`, err)}
+		}
+	}
+	if _, ok := cc.mutation.CitizenID(); !ok {
+		return &ValidationError{Name: "citizen_id", err: errors.New(`ent: missing required field "Customer.citizen_id"`)}
+	}
+	if v, ok := cc.mutation.CitizenID(); ok {
+		if err := customer.CitizenIDValidator(v); err != nil {
+			return &ValidationError{Name: "citizen_id", err: fmt.Errorf(`ent: validator failed for field "Customer.citizen_id": %w`, err)}
+		}
+	}
+	if _, ok := cc.mutation.DateOfBirth(); !ok {
+		return &ValidationError{Name: "date_of_birth", err: errors.New(`ent: missing required field "Customer.date_of_birth"`)}
+	}
+	if _, ok := cc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Customer.created_at"`)}
+	}
+	if _, ok := cc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Customer.updated_at"`)}
+	}
 	return nil
 }
 
@@ -83,8 +214,13 @@ func (cc *CustomerCreate) sqlSave(ctx context.Context) (*Customer, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
+			_node.ID = *id
+		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+			return nil, err
+		}
+	}
 	cc.mutation.id = &_node.ID
 	cc.mutation.done = true
 	return _node, nil
@@ -93,8 +229,44 @@ func (cc *CustomerCreate) sqlSave(ctx context.Context) (*Customer, error) {
 func (cc *CustomerCreate) createSpec() (*Customer, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Customer{config: cc.config}
-		_spec = sqlgraph.NewCreateSpec(customer.Table, sqlgraph.NewFieldSpec(customer.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(customer.Table, sqlgraph.NewFieldSpec(customer.FieldID, field.TypeUUID))
 	)
+	if id, ok := cc.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = &id
+	}
+	if value, ok := cc.mutation.Fullname(); ok {
+		_spec.SetField(customer.FieldFullname, field.TypeString, value)
+		_node.Fullname = value
+	}
+	if value, ok := cc.mutation.Phone(); ok {
+		_spec.SetField(customer.FieldPhone, field.TypeString, value)
+		_node.Phone = value
+	}
+	if value, ok := cc.mutation.Address(); ok {
+		_spec.SetField(customer.FieldAddress, field.TypeString, value)
+		_node.Address = value
+	}
+	if value, ok := cc.mutation.Gender(); ok {
+		_spec.SetField(customer.FieldGender, field.TypeEnum, value)
+		_node.Gender = value
+	}
+	if value, ok := cc.mutation.CitizenID(); ok {
+		_spec.SetField(customer.FieldCitizenID, field.TypeString, value)
+		_node.CitizenID = value
+	}
+	if value, ok := cc.mutation.DateOfBirth(); ok {
+		_spec.SetField(customer.FieldDateOfBirth, field.TypeTime, value)
+		_node.DateOfBirth = value
+	}
+	if value, ok := cc.mutation.CreatedAt(); ok {
+		_spec.SetField(customer.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := cc.mutation.UpdatedAt(); ok {
+		_spec.SetField(customer.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
 	if nodes := cc.mutation.AccountsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -128,6 +300,7 @@ func (ccb *CustomerCreateBulk) Save(ctx context.Context) ([]*Customer, error) {
 	for i := range ccb.builders {
 		func(i int, root context.Context) {
 			builder := ccb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*CustomerMutation)
 				if !ok {
@@ -154,10 +327,6 @@ func (ccb *CustomerCreateBulk) Save(ctx context.Context) ([]*Customer, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

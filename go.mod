@@ -59,6 +59,8 @@ require (
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/dgryski/trifles v0.0.0-20230415055908-5afb1989f858
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-openapi/inflect v0.19.0 // indirect
 	github.com/go-playground/locales v0.14.1

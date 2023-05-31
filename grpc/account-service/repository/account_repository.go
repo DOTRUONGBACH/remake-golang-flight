@@ -1,4 +1,4 @@
-package Repository
+package repository
 
 import (
 	"context"
@@ -12,8 +12,7 @@ import (
 )
 
 type AccountRepository interface {
-	Signup(ctx context.Context, model *pb.SingupRequest) (*ent.Account, *ent.Customer, error)
-	Login(ctx context.Context, model *pb.LoginRequest) (*ent.Account, error)
+	CreateAccount(ctx context.Context, model *pb.SingupRequest) (*ent.Account, error)
 	CloseDB()
 }
 
@@ -21,7 +20,7 @@ type PostgresDB struct {
 	Client *ent.Client
 }
 
-func NewPostgresDB(connection_str string) (*PostgresDB, error) {
+func NewPostgresDB(connection_str string) (AccountRepository, error) {
 	client, err := ent.Open("postgres", connection_str)
 	if err != nil {
 		return nil, err
@@ -39,11 +38,10 @@ func (r *PostgresDB) CloseDB() {
 	r.Client.Close()
 }
 
-func (r *PostgresDB) Signup(ctx context.Context, model *pb.SingupRequest) (*ent.Account, *ent.Customer, error) {
-	res, err := r.Client.Account.Create().SetEmail(model.Email).SetPassword(model.Password).SetRole(account.Role(model.Role)).SetStatus(account.StatusInactive).SetAccOwnerID(model.AccOwnerId).Save(ctx)
-
-}
-
-func (r *PostgresDB) Login(ctx context.Context, model *pb.LoginRequest) (*ent.Account, error) {
-
+func (r *PostgresDB) CreateAccount(ctx context.Context, model *pb.SingupRequest) (*ent.Account, error) {
+	res, err := r.Client.Account.Create().SetEmail(model.Email).SetPassword(model.Password).SetRole(account.Role(model.Role)).SetStatus(account.StatusInactive).SetAccOwnerID(uuid.MustParse(model.AccOwnerId)).Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }

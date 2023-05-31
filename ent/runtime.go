@@ -4,6 +4,7 @@ package ent
 
 import (
 	"jet/ent/account"
+	"jet/ent/customer"
 	"jet/ent/schema"
 	"time"
 
@@ -30,4 +31,38 @@ func init() {
 	accountDescID := accountFields[0].Descriptor()
 	// account.DefaultID holds the default value on creation for the id field.
 	account.DefaultID = accountDescID.Default.(func() uuid.UUID)
+	customerFields := schema.Customer{}.Fields()
+	_ = customerFields
+	// customerDescCitizenID is the schema descriptor for citizen_id field.
+	customerDescCitizenID := customerFields[5].Descriptor()
+	// customer.CitizenIDValidator is a validator for the "citizen_id" field. It is called by the builders before save.
+	customer.CitizenIDValidator = func() func(string) error {
+		validators := customerDescCitizenID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(citizen_id string) error {
+			for _, fn := range fns {
+				if err := fn(citizen_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// customerDescCreatedAt is the schema descriptor for created_at field.
+	customerDescCreatedAt := customerFields[7].Descriptor()
+	// customer.DefaultCreatedAt holds the default value on creation for the created_at field.
+	customer.DefaultCreatedAt = customerDescCreatedAt.Default.(func() time.Time)
+	// customerDescUpdatedAt is the schema descriptor for updated_at field.
+	customerDescUpdatedAt := customerFields[8].Descriptor()
+	// customer.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	customer.DefaultUpdatedAt = customerDescUpdatedAt.Default.(func() time.Time)
+	// customer.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	customer.UpdateDefaultUpdatedAt = customerDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// customerDescID is the schema descriptor for id field.
+	customerDescID := customerFields[0].Descriptor()
+	// customer.DefaultID holds the default value on creation for the id field.
+	customer.DefaultID = customerDescID.Default.(func() uuid.UUID)
 }

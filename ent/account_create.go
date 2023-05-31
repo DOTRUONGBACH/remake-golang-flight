@@ -89,13 +89,13 @@ func (ac *AccountCreate) SetNillableID(u *uuid.UUID) *AccountCreate {
 }
 
 // SetAccOwnerID sets the "acc_owner" edge to the Customer entity by ID.
-func (ac *AccountCreate) SetAccOwnerID(id int) *AccountCreate {
+func (ac *AccountCreate) SetAccOwnerID(id uuid.UUID) *AccountCreate {
 	ac.mutation.SetAccOwnerID(id)
 	return ac
 }
 
 // SetNillableAccOwnerID sets the "acc_owner" edge to the Customer entity by ID if the given value is not nil.
-func (ac *AccountCreate) SetNillableAccOwnerID(id *int) *AccountCreate {
+func (ac *AccountCreate) SetNillableAccOwnerID(id *uuid.UUID) *AccountCreate {
 	if id != nil {
 		ac = ac.SetAccOwnerID(*id)
 	}
@@ -253,7 +253,7 @@ func (ac *AccountCreate) createSpec() (*Account, *sqlgraph.CreateSpec) {
 			Columns: []string{account.AccOwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(customer.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
