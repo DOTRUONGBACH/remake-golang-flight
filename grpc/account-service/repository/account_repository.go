@@ -14,6 +14,7 @@ import (
 type AccountRepository interface {
 	CreateAccount(ctx context.Context, model *pb.SingupRequest) (*ent.Account, error)
 	CloseDB()
+	GetAccountByEmail(ctx context.Context, model *pb.GetAccountByEmailRequest) (*ent.Account, error)
 }
 
 type PostgresDB struct {
@@ -40,6 +41,14 @@ func (r *PostgresDB) CloseDB() {
 
 func (r *PostgresDB) CreateAccount(ctx context.Context, model *pb.SingupRequest) (*ent.Account, error) {
 	res, err := r.Client.Account.Create().SetEmail(model.Email).SetPassword(model.Password).SetRole(account.Role(model.Role)).SetStatus(account.StatusInactive).SetAccOwnerID(uuid.MustParse(model.AccOwnerId)).Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (r *PostgresDB) GetAccountByEmail(ctx context.Context, model *pb.GetAccountByEmailRequest) (*ent.Account, error) {
+	res, err := r.Client.Account.Query().Where(account.Email(model.Email)).Only(ctx)
 	if err != nil {
 		return nil, err
 	}

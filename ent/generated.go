@@ -25,6 +25,11 @@ type AccountLoginResponse struct {
 	Status bool   `json:"status"`
 }
 
+type AccountOrder struct {
+	Direction OrderDirection     `json:"direction"`
+	Field     *AccountOrderField `json:"field,omitempty"`
+}
+
 type CustomerConnection struct {
 	Edges      []*CustomerEdge `json:"edges,omitempty"`
 	PageInfo   *PageInfo       `json:"pageInfo"`
@@ -69,48 +74,48 @@ type Signup struct {
 	Role     Role           `json:"role"`
 }
 
-type AccountOrderfield string
+type AccountOrderField string
 
 const (
-	AccountOrderfieldID        AccountOrderfield = "ID"
-	AccountOrderfieldEmail     AccountOrderfield = "EMAIL"
-	AccountOrderfieldCreatedAt AccountOrderfield = "CREATED_AT"
-	AccountOrderfieldUpdatedAt AccountOrderfield = "UPDATED_AT"
+	AccountOrderFieldID        AccountOrderField = "ID"
+	AccountOrderFieldEmail     AccountOrderField = "EMAIL"
+	AccountOrderFieldCreatedAt AccountOrderField = "CREATED_AT"
+	AccountOrderFieldUpdatedAt AccountOrderField = "UPDATED_AT"
 )
 
-var AllAccountOrderfield = []AccountOrderfield{
-	AccountOrderfieldID,
-	AccountOrderfieldEmail,
-	AccountOrderfieldCreatedAt,
-	AccountOrderfieldUpdatedAt,
+var AllAccountOrderField = []AccountOrderField{
+	AccountOrderFieldID,
+	AccountOrderFieldEmail,
+	AccountOrderFieldCreatedAt,
+	AccountOrderFieldUpdatedAt,
 }
 
-func (e AccountOrderfield) IsValid() bool {
+func (e AccountOrderField) IsValid() bool {
 	switch e {
-	case AccountOrderfieldID, AccountOrderfieldEmail, AccountOrderfieldCreatedAt, AccountOrderfieldUpdatedAt:
+	case AccountOrderFieldID, AccountOrderFieldEmail, AccountOrderFieldCreatedAt, AccountOrderFieldUpdatedAt:
 		return true
 	}
 	return false
 }
 
-func (e AccountOrderfield) String() string {
+func (e AccountOrderField) String() string {
 	return string(e)
 }
 
-func (e *AccountOrderfield) UnmarshalGQL(v interface{}) error {
+func (e *AccountOrderField) UnmarshalGQL(v interface{}) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
 	}
 
-	*e = AccountOrderfield(str)
+	*e = AccountOrderField(str)
 	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid AccountOrderfield", str)
+		return fmt.Errorf("%s is not a valid AccountOrderField", str)
 	}
 	return nil
 }
 
-func (e AccountOrderfield) MarshalGQL(w io.Writer) {
+func (e AccountOrderField) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

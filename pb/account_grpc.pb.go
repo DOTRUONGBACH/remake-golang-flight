@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type AccountServiceClient interface {
 	Signup(ctx context.Context, in *SingupRequest, opts ...grpc.CallOption) (*Account, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	GetAccountByEmail(ctx context.Context, in *GetAccountByEmailRequest, opts ...grpc.CallOption) (*Account, error)
 }
 
 type accountServiceClient struct {
@@ -52,12 +53,22 @@ func (c *accountServiceClient) Login(ctx context.Context, in *LoginRequest, opts
 	return out, nil
 }
 
+func (c *accountServiceClient) GetAccountByEmail(ctx context.Context, in *GetAccountByEmailRequest, opts ...grpc.CallOption) (*Account, error) {
+	out := new(Account)
+	err := c.cc.Invoke(ctx, "/training.AccountService/GetAccountByEmail", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AccountServiceServer is the server API for AccountService service.
 // All implementations must embed UnimplementedAccountServiceServer
 // for forward compatibility
 type AccountServiceServer interface {
 	Signup(context.Context, *SingupRequest) (*Account, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	GetAccountByEmail(context.Context, *GetAccountByEmailRequest) (*Account, error)
 	mustEmbedUnimplementedAccountServiceServer()
 }
 
@@ -70,6 +81,9 @@ func (UnimplementedAccountServiceServer) Signup(context.Context, *SingupRequest)
 }
 func (UnimplementedAccountServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedAccountServiceServer) GetAccountByEmail(context.Context, *GetAccountByEmailRequest) (*Account, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAccountByEmail not implemented")
 }
 func (UnimplementedAccountServiceServer) mustEmbedUnimplementedAccountServiceServer() {}
 
@@ -120,6 +134,24 @@ func _AccountService_Login_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountService_GetAccountByEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAccountByEmailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).GetAccountByEmail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/training.AccountService/GetAccountByEmail",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).GetAccountByEmail(ctx, req.(*GetAccountByEmailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountService_ServiceDesc is the grpc.ServiceDesc for AccountService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -134,6 +166,10 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _AccountService_Login_Handler,
+		},
+		{
+			MethodName: "GetAccountByEmail",
+			Handler:    _AccountService_GetAccountByEmail_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

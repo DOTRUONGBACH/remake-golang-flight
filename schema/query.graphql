@@ -1,0 +1,12 @@
+type Query{
+Account: AccountQuery! @goField(forceResolver: true)
+Customer: CustomerQuery! @goField(forceResolver: true)
+}
+
+type AccountQuery{
+Accounts(after: Cursor, first: Int, before: Cursor, last: Int, orderBy: AccountOrder): AccountConnection! @goField(forceResolver: true) @hasRole(role: Administrator)
+}
+
+type CustomerQuery{
+Customers(after: Cursor, first: Int, before: Cursor, last: Int, orderBy: CustomerOrder): CustomerConnection! @goField(forceResolver: true)
+}

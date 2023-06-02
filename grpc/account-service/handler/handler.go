@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"jet/grpc/account-service/repository"
+	"jet/internal/jwt"
+	"jet/internal/util"
 	"jet/pb"
 	"log"
 
@@ -34,4 +36,24 @@ func (as AccountService) SignUp(ctx context.Context, model *pb.SingupRequest) (*
 		AccStatus: pb.AccountStatus(pb.AccountStatus_value[string(res.Status)]),
 		CreatedAt: timestamppb.New(res.CreatedAt),
 		UpdateAt:  timestamppb.New(res.UpdatedAt)}, nil
+}
+
+func (as AccountService) LogIn(ctx context.Context, model *pb.LoginRequest) (*pb.LoginResponse, error) {
+	user, err := as.AccountRepository.GetAccountByEmail(ctx, &pb.GetAccountByEmailRequest{Email: model.Email})
+	if err != nil {
+		log.Print("acc does not exist: ", err)
+		return &pb.LoginResponse{Token: "",
+			Status: false}, err
+
+	}
+
+	if util.CheckPasswordHash(model.Password, user.Password) && user.Status == "active" {
+		token, err := jwt.GenerateToken(user.Email)
+		if err != nil {
+			return &pb.LoginResponse{Token: "", Status: false}, err
+		}
+		return &pb.LoginResponse{Token: token, Status: true}, nil
+	}
+
+	return &pb.LoginResponse{Token: "", Status: false}, err
 }

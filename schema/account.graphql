@@ -12,11 +12,16 @@ enum AccountStatus {
     Active
 }
 
-enum AccountOrderfield{
+enum AccountOrderField{
 ID
 EMAIL
 CREATED_AT
 UPDATED_AT
+}
+
+input AccountOrder {
+    direction: OrderDirection!
+    field: AccountOrderField
 }
 
 type AccountConnection{

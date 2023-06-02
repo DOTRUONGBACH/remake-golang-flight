@@ -38,7 +38,10 @@ type Config struct {
 
 type ResolverRoot interface {
 	Account() AccountResolver
+	AccountQuery() AccountQueryResolver
 	Customer() CustomerResolver
+	CustomerQuery() CustomerQueryResolver
+	Query() QueryResolver
 }
 
 type DirectiveRoot struct {
@@ -72,6 +75,10 @@ type ComplexityRoot struct {
 		Token  func(childComplexity int) int
 	}
 
+	AccountQuery struct {
+		Accounts func(childComplexity int, after *string, first *int, before *string, last *int, orderBy *ent.AccountOrder) int
+	}
+
 	Customer struct {
 		Address   func(childComplexity int) int
 		CitizenID func(childComplexity int) int
@@ -95,6 +102,10 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	CustomerQuery struct {
+		Customers func(childComplexity int, after *string, first *int, before *string, last *int, orderBy *ent.CustomerOrder) int
+	}
+
 	PageInfo struct {
 		EndCursor       func(childComplexity int) int
 		HasNextPage     func(childComplexity int) int
@@ -103,6 +114,8 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		Account  func(childComplexity int) int
+		Customer func(childComplexity int) int
 	}
 }
 
@@ -111,12 +124,22 @@ type AccountResolver interface {
 
 	Role(ctx context.Context, obj *ent.Account) (ent.Role, error)
 }
+type AccountQueryResolver interface {
+	Accounts(ctx context.Context, obj *ent.AccountQuery, after *string, first *int, before *string, last *int, orderBy *ent.AccountOrder) (*ent.AccountConnection, error)
+}
 type CustomerResolver interface {
 	ID(ctx context.Context, obj *ent.Customer) (string, error)
 	Name(ctx context.Context, obj *ent.Customer) (string, error)
 
 	Gender(ctx context.Context, obj *ent.Customer) (ent.CustomerGender, error)
 	Dob(ctx context.Context, obj *ent.Customer) (*time.Time, error)
+}
+type CustomerQueryResolver interface {
+	Customers(ctx context.Context, obj *ent.CustomerQuery, after *string, first *int, before *string, last *int, orderBy *ent.CustomerOrder) (*ent.CustomerConnection, error)
+}
+type QueryResolver interface {
+	Account(ctx context.Context) (*ent.AccountQuery, error)
+	Customer(ctx context.Context) (*ent.CustomerQuery, error)
 }
 
 type executableSchema struct {
@@ -225,6 +248,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.AccountLoginResponse.Token(childComplexity), true
 
+	case "AccountQuery.Accounts":
+		if e.complexity.AccountQuery.Accounts == nil {
+			break
+		}
+
+		args, err := ec.field_AccountQuery_Accounts_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.AccountQuery.Accounts(childComplexity, args["after"].(*string), args["first"].(*int), args["before"].(*string), args["last"].(*int), args["orderBy"].(*ent.AccountOrder)), true
+
 	case "Customer.address":
 		if e.complexity.Customer.Address == nil {
 			break
@@ -323,6 +358,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.CustomerEdge.Node(childComplexity), true
 
+	case "CustomerQuery.Customers":
+		if e.complexity.CustomerQuery.Customers == nil {
+			break
+		}
+
+		args, err := ec.field_CustomerQuery_Customers_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.CustomerQuery.Customers(childComplexity, args["after"].(*string), args["first"].(*int), args["before"].(*string), args["last"].(*int), args["orderBy"].(*ent.CustomerOrder)), true
+
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
 			break
@@ -351,6 +398,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
 
+	case "Query.Account":
+		if e.complexity.Query.Account == nil {
+			break
+		}
+
+		return e.complexity.Query.Account(childComplexity), true
+
+	case "Query.Customer":
+		if e.complexity.Query.Customer == nil {
+			break
+		}
+
+		return e.complexity.Query.Customer(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -359,6 +420,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAccountOrder,
 		ec.unmarshalInputCustomerInput,
 		ec.unmarshalInputCustomerOrder,
 		ec.unmarshalInputLogin,
@@ -422,11 +484,16 @@ enum AccountStatus {
     Active
 }
 
-enum AccountOrderfield{
+enum AccountOrderField{
 ID
 EMAIL
 CREATED_AT
 UPDATED_AT
+}
+
+input AccountOrder {
+    direction: OrderDirection!
+    field: AccountOrderField
 }
 
 type AccountConnection{
@@ -538,6 +605,19 @@ type CustomerEdge {
     node: Customer
     cursor: Cursor!
 }`, BuiltIn: false},
+	{Name: "../schema/mutation.graphql", Input: ``, BuiltIn: false},
+	{Name: "../schema/query.graphql", Input: `type Query{
+Account: AccountQuery! @goField(forceResolver: true)
+Customer: CustomerQuery! @goField(forceResolver: true)
+}
+
+type AccountQuery{
+Accounts(after: Cursor, first: Int, before: Cursor, last: Int, orderBy: AccountOrder): AccountConnection! @goField(forceResolver: true) @hasRole(role: Administrator)
+}
+
+type CustomerQuery{
+Customers(after: Cursor, first: Int, before: Cursor, last: Int, orderBy: CustomerOrder): CustomerConnection! @goField(forceResolver: true)
+}`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -572,6 +652,108 @@ func (ec *executionContext) dir_validation_args(ctx context.Context, rawArgs map
 		}
 	}
 	args["constraints"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_AccountQuery_Accounts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["after"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
+		arg0, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["after"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["first"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["first"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["before"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+		arg2, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["before"] = arg2
+	var arg3 *int
+	if tmp, ok := rawArgs["last"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
+		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["last"] = arg3
+	var arg4 *ent.AccountOrder
+	if tmp, ok := rawArgs["orderBy"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderBy"))
+		arg4, err = ec.unmarshalOAccountOrder2ᚖjetᚋentᚐAccountOrder(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["orderBy"] = arg4
+	return args, nil
+}
+
+func (ec *executionContext) field_CustomerQuery_Customers_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["after"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
+		arg0, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["after"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["first"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["first"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["before"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+		arg2, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["before"] = arg2
+	var arg3 *int
+	if tmp, ok := rawArgs["last"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
+		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["last"] = arg3
+	var arg4 *ent.CustomerOrder
+	if tmp, ok := rawArgs["orderBy"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderBy"))
+		arg4, err = ec.unmarshalOCustomerOrder2ᚖjetᚋentᚐCustomerOrder(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["orderBy"] = arg4
 	return args, nil
 }
 
@@ -1218,6 +1400,93 @@ func (ec *executionContext) fieldContext_AccountLoginResponse_status(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _AccountQuery_Accounts(ctx context.Context, field graphql.CollectedField, obj *ent.AccountQuery) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountQuery_Accounts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.AccountQuery().Accounts(rctx, obj, fc.Args["after"].(*string), fc.Args["first"].(*int), fc.Args["before"].(*string), fc.Args["last"].(*int), fc.Args["orderBy"].(*ent.AccountOrder))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			role, err := ec.unmarshalNRole2jetᚋentᚐRole(ctx, "Administrator")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.HasRole == nil {
+				return nil, errors.New("directive hasRole is not implemented")
+			}
+			return ec.directives.HasRole(ctx, obj, directive0, role)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*ent.AccountConnection); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *jet/ent.AccountConnection`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.AccountConnection)
+	fc.Result = res
+	return ec.marshalNAccountConnection2ᚖjetᚋentᚐAccountConnection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountQuery_Accounts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountQuery",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_AccountConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_AccountConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_AccountConnection_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AccountConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_AccountQuery_Accounts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Customer_id(ctx context.Context, field graphql.CollectedField, obj *ent.Customer) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Customer_id(ctx, field)
 	if err != nil {
@@ -1858,6 +2127,69 @@ func (ec *executionContext) fieldContext_CustomerEdge_cursor(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _CustomerQuery_Customers(ctx context.Context, field graphql.CollectedField, obj *ent.CustomerQuery) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CustomerQuery_Customers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.CustomerQuery().Customers(rctx, obj, fc.Args["after"].(*string), fc.Args["first"].(*int), fc.Args["before"].(*string), fc.Args["last"].(*int), fc.Args["orderBy"].(*ent.CustomerOrder))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CustomerConnection)
+	fc.Result = res
+	return ec.marshalNCustomerConnection2ᚖjetᚋentᚐCustomerConnection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CustomerQuery_Customers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CustomerQuery",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_CustomerConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_CustomerConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_CustomerConnection_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CustomerConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_CustomerQuery_Customers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *ent.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasNextPage(ctx, field)
 	if err != nil {
@@ -2023,6 +2355,102 @@ func (ec *executionContext) fieldContext_PageInfo_endCursor(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_Account(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_Account(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Account(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.AccountQuery)
+	fc.Result = res
+	return ec.marshalNAccountQuery2ᚖjetᚋentᚐAccountQuery(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_Account(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Accounts":
+				return ec.fieldContext_AccountQuery_Accounts(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AccountQuery", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_Customer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_Customer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Customer(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CustomerQuery)
+	fc.Result = res
+	return ec.marshalNCustomerQuery2ᚖjetᚋentᚐCustomerQuery(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_Customer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Customers":
+				return ec.fieldContext_CustomerQuery_Customers(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CustomerQuery", field.Name)
 		},
 	}
 	return fc, nil
@@ -3930,6 +4358,44 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAccountOrder(ctx context.Context, obj interface{}) (ent.AccountOrder, error) {
+	var it ent.AccountOrder
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"direction", "field"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "direction":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
+			data, err := ec.unmarshalNOrderDirection2jetᚋentᚐOrderDirection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Direction = data
+		case "field":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("field"))
+			data, err := ec.unmarshalOAccountOrderField2ᚖjetᚋentᚐAccountOrderField(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Field = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCustomerInput(ctx context.Context, obj interface{}) (ent.CustomerInput, error) {
 	var it ent.CustomerInput
 	asMap := map[string]interface{}{}
@@ -4333,6 +4799,47 @@ func (ec *executionContext) _AccountLoginResponse(ctx context.Context, sel ast.S
 	return out
 }
 
+var accountQueryImplementors = []string{"AccountQuery"}
+
+func (ec *executionContext) _AccountQuery(ctx context.Context, sel ast.SelectionSet, obj *ent.AccountQuery) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, accountQueryImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AccountQuery")
+		case "Accounts":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AccountQuery_Accounts(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var customerImplementors = []string{"Customer"}
 
 func (ec *executionContext) _Customer(ctx context.Context, sel ast.SelectionSet, obj *ent.Customer) graphql.Marshaler {
@@ -4534,6 +5041,47 @@ func (ec *executionContext) _CustomerEdge(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var customerQueryImplementors = []string{"CustomerQuery"}
+
+func (ec *executionContext) _CustomerQuery(ctx context.Context, sel ast.SelectionSet, obj *ent.CustomerQuery) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, customerQueryImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CustomerQuery")
+		case "Customers":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._CustomerQuery_Customers(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var pageInfoImplementors = []string{"PageInfo"}
 
 func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *ent.PageInfo) graphql.Marshaler {
@@ -4596,6 +5144,52 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "Account":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_Account(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "Customer":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_Customer(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "__type":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -4937,6 +5531,34 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNAccountConnection2jetᚋentᚐAccountConnection(ctx context.Context, sel ast.SelectionSet, v ent.AccountConnection) graphql.Marshaler {
+	return ec._AccountConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAccountConnection2ᚖjetᚋentᚐAccountConnection(ctx context.Context, sel ast.SelectionSet, v *ent.AccountConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AccountConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAccountQuery2jetᚋentᚐAccountQuery(ctx context.Context, sel ast.SelectionSet, v ent.AccountQuery) graphql.Marshaler {
+	return ec._AccountQuery(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAccountQuery2ᚖjetᚋentᚐAccountQuery(ctx context.Context, sel ast.SelectionSet, v *ent.AccountQuery) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AccountQuery(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -4967,6 +5589,20 @@ func (ec *executionContext) marshalNCursor2string(ctx context.Context, sel ast.S
 	return res
 }
 
+func (ec *executionContext) marshalNCustomerConnection2jetᚋentᚐCustomerConnection(ctx context.Context, sel ast.SelectionSet, v ent.CustomerConnection) graphql.Marshaler {
+	return ec._CustomerConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCustomerConnection2ᚖjetᚋentᚐCustomerConnection(ctx context.Context, sel ast.SelectionSet, v *ent.CustomerConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CustomerConnection(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNCustomerGender2jetᚋentᚐCustomerGender(ctx context.Context, v interface{}) (ent.CustomerGender, error) {
 	var res ent.CustomerGender
 	err := res.UnmarshalGQL(v)
@@ -4980,6 +5616,20 @@ func (ec *executionContext) marshalNCustomerGender2jetᚋentᚐCustomerGender(ct
 func (ec *executionContext) unmarshalNCustomerInput2ᚖjetᚋentᚐCustomerInput(ctx context.Context, v interface{}) (*ent.CustomerInput, error) {
 	res, err := ec.unmarshalInputCustomerInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCustomerQuery2jetᚋentᚐCustomerQuery(ctx context.Context, sel ast.SelectionSet, v ent.CustomerQuery) graphql.Marshaler {
+	return ec._CustomerQuery(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCustomerQuery2ᚖjetᚋentᚐCustomerQuery(ctx context.Context, sel ast.SelectionSet, v *ent.CustomerQuery) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CustomerQuery(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
@@ -5401,6 +6051,30 @@ func (ec *executionContext) marshalOAccountEdge2ᚖjetᚋentᚐAccountEdge(ctx c
 	return ec._AccountEdge(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOAccountOrder2ᚖjetᚋentᚐAccountOrder(ctx context.Context, v interface{}) (*ent.AccountOrder, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAccountOrder(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOAccountOrderField2ᚖjetᚋentᚐAccountOrderField(ctx context.Context, v interface{}) (*ent.AccountOrderField, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(ent.AccountOrderField)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAccountOrderField2ᚖjetᚋentᚐAccountOrderField(ctx context.Context, sel ast.SelectionSet, v *ent.AccountOrderField) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -5498,6 +6172,14 @@ func (ec *executionContext) marshalOCustomerEdge2ᚖjetᚋentᚐCustomerEdge(ctx
 	return ec._CustomerEdge(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOCustomerOrder2ᚖjetᚋentᚐCustomerOrder(ctx context.Context, v interface{}) (*ent.CustomerOrder, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputCustomerOrder(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOCustomerOrderField2ᚖjetᚋentᚐCustomerOrderField(ctx context.Context, v interface{}) (*ent.CustomerOrderField, error) {
 	if v == nil {
 		return nil, nil
@@ -5512,6 +6194,22 @@ func (ec *executionContext) marshalOCustomerOrderField2ᚖjetᚋentᚐCustomerOr
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalInt(*v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

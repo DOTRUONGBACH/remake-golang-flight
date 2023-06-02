@@ -6,19 +6,18 @@ package resolver
 
 import (
 	"context"
-	"fmt"
 	"jet/ent"
 	graphql1 "jet/graphql"
 )
 
 // ID is the resolver for the id field.
 func (r *accountResolver) ID(ctx context.Context, obj *ent.Account) (string, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return obj.ID.String(), nil
 }
 
 // Role is the resolver for the role field.
 func (r *accountResolver) Role(ctx context.Context, obj *ent.Account) (ent.Role, error) {
-	panic(fmt.Errorf("not implemented: Role - role"))
+	return ent.Role(obj.Role), nil
 }
 
 // Account returns graphql1.AccountResolver implementation.

@@ -8,6 +8,7 @@ import "customer.proto";
 service AccountService{
 rpc Signup(SingupRequest) returns (Account);
 rpc Login(LoginRequest) returns(LoginResponse);
+rpc GetAccountByEmail(GetAccountByEmailRequest) returns(Account);
 }
 enum Role {
     Admin_role = 0;
@@ -42,4 +43,7 @@ string password =2;
 message LoginResponse{
     string token = 1;
     bool status = 2;
+}
+message GetAccountByEmailRequest{
+    string email = 1;
 }

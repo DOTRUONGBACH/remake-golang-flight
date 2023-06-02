@@ -4,6 +4,8 @@ import (
 	"context"
 	"jet/config"
 	"jet/ent"
+	"jet/middleware"
+	"jet/middleware/auth"
 	"jet/pb"
 	"log"
 	"os"
@@ -64,7 +66,7 @@ func NewServerCmd(configs *config.Configurations, logger *zap.Logger) *cobra.Com
 			}
 
 			// GraphQL schema resolver handler.
-			resolverHandler := handler.NewDefaultServer(resolver.NewSchema(db, validator, validationTranslator, logger, customerService, accountService, flightService, passengerService, ticketService, bookingService))
+			resolverHandler := handler.NewDefaultServer(resolver.NewSchema(db, validator, validationTranslator, logger, accountService))
 			// Handler for GraphQL Playground
 			playgroundHandler := playground.Handler("GraphQL Playground", "/graphql")
 
