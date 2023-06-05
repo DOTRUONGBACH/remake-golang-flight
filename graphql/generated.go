@@ -13,8 +13,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"entgo.io/contrib/entgql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/google/uuid"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -38,9 +40,11 @@ type Config struct {
 
 type ResolverRoot interface {
 	Account() AccountResolver
+	AccountOps() AccountOpsResolver
 	AccountQuery() AccountQueryResolver
 	Customer() CustomerResolver
 	CustomerQuery() CustomerQueryResolver
+	Mutation() MutationResolver
 	Query() QueryResolver
 }
 
@@ -75,8 +79,13 @@ type ComplexityRoot struct {
 		Token  func(childComplexity int) int
 	}
 
+	AccountOps struct {
+		Login  func(childComplexity int, input ent.Login) int
+		Signup func(childComplexity int, input ent.NewAccountInput) int
+	}
+
 	AccountQuery struct {
-		Accounts func(childComplexity int, after *string, first *int, before *string, last *int, orderBy *ent.AccountOrder) int
+		Accounts func(childComplexity int, after *entgql.Cursor[uuid.UUID], first *int, before *entgql.Cursor[uuid.UUID], last *int, orderBy *ent.AccountOrder) int
 	}
 
 	Customer struct {
@@ -103,7 +112,11 @@ type ComplexityRoot struct {
 	}
 
 	CustomerQuery struct {
-		Customers func(childComplexity int, after *string, first *int, before *string, last *int, orderBy *ent.CustomerOrder) int
+		Customers func(childComplexity int, after *entgql.Cursor[uuid.UUID], first *int, before *entgql.Cursor[uuid.UUID], last *int, orderBy *ent.CustomerOrder) int
+	}
+
+	Mutation struct {
+		Account func(childComplexity int) int
 	}
 
 	PageInfo struct {
@@ -124,8 +137,12 @@ type AccountResolver interface {
 
 	Role(ctx context.Context, obj *ent.Account) (ent.Role, error)
 }
+type AccountOpsResolver interface {
+	Signup(ctx context.Context, obj *ent.AccountOps, input ent.NewAccountInput) (*ent.Account, error)
+	Login(ctx context.Context, obj *ent.AccountOps, input ent.Login) (*ent.AccountLoginResponse, error)
+}
 type AccountQueryResolver interface {
-	Accounts(ctx context.Context, obj *ent.AccountQuery, after *string, first *int, before *string, last *int, orderBy *ent.AccountOrder) (*ent.AccountConnection, error)
+	Accounts(ctx context.Context, obj *ent.AccountQuery, after *entgql.Cursor[uuid.UUID], first *int, before *entgql.Cursor[uuid.UUID], last *int, orderBy *ent.AccountOrder) (*ent.AccountConnection, error)
 }
 type CustomerResolver interface {
 	ID(ctx context.Context, obj *ent.Customer) (string, error)
@@ -135,7 +152,10 @@ type CustomerResolver interface {
 	Dob(ctx context.Context, obj *ent.Customer) (*time.Time, error)
 }
 type CustomerQueryResolver interface {
-	Customers(ctx context.Context, obj *ent.CustomerQuery, after *string, first *int, before *string, last *int, orderBy *ent.CustomerOrder) (*ent.CustomerConnection, error)
+	Customers(ctx context.Context, obj *ent.CustomerQuery, after *entgql.Cursor[uuid.UUID], first *int, before *entgql.Cursor[uuid.UUID], last *int, orderBy *ent.CustomerOrder) (*ent.CustomerConnection, error)
+}
+type MutationResolver interface {
+	Account(ctx context.Context) (*ent.AccountOps, error)
 }
 type QueryResolver interface {
 	Account(ctx context.Context) (*ent.AccountQuery, error)
@@ -248,6 +268,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.AccountLoginResponse.Token(childComplexity), true
 
+	case "AccountOps.Login":
+		if e.complexity.AccountOps.Login == nil {
+			break
+		}
+
+		args, err := ec.field_AccountOps_Login_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.AccountOps.Login(childComplexity, args["input"].(ent.Login)), true
+
+	case "AccountOps.Signup":
+		if e.complexity.AccountOps.Signup == nil {
+			break
+		}
+
+		args, err := ec.field_AccountOps_Signup_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.AccountOps.Signup(childComplexity, args["input"].(ent.NewAccountInput)), true
+
 	case "AccountQuery.Accounts":
 		if e.complexity.AccountQuery.Accounts == nil {
 			break
@@ -258,7 +302,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.AccountQuery.Accounts(childComplexity, args["after"].(*string), args["first"].(*int), args["before"].(*string), args["last"].(*int), args["orderBy"].(*ent.AccountOrder)), true
+		return e.complexity.AccountQuery.Accounts(childComplexity, args["after"].(*entgql.Cursor[uuid.UUID]), args["first"].(*int), args["before"].(*entgql.Cursor[uuid.UUID]), args["last"].(*int), args["orderBy"].(*ent.AccountOrder)), true
 
 	case "Customer.address":
 		if e.complexity.Customer.Address == nil {
@@ -368,7 +412,14 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.CustomerQuery.Customers(childComplexity, args["after"].(*string), args["first"].(*int), args["before"].(*string), args["last"].(*int), args["orderBy"].(*ent.CustomerOrder)), true
+		return e.complexity.CustomerQuery.Customers(childComplexity, args["after"].(*entgql.Cursor[uuid.UUID]), args["first"].(*int), args["before"].(*entgql.Cursor[uuid.UUID]), args["last"].(*int), args["orderBy"].(*ent.CustomerOrder)), true
+
+	case "Mutation.Account":
+		if e.complexity.Mutation.Account == nil {
+			break
+		}
+
+		return e.complexity.Mutation.Account(childComplexity), true
 
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
@@ -424,6 +475,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCustomerInput,
 		ec.unmarshalInputCustomerOrder,
 		ec.unmarshalInputLogin,
+		ec.unmarshalInputNewAccountInput,
 		ec.unmarshalInputSignup,
 	)
 	first := true
@@ -437,6 +489,21 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			first = false
 			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
 			data := ec._Query(ctx, rc.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
+			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
 			var buf bytes.Buffer
 			data.MarshalGQL(&buf)
 
@@ -531,6 +598,13 @@ password: String!
 type AccountLoginResponse{
     token: String!
     status: Boolean!
+}
+
+input NewAccountInput {
+    customer: CustomerInput!
+    email: String!
+    password: String!
+    role: Role!
 }`, BuiltIn: false},
 	{Name: "../schema/common.graphql", Input: `directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
 directive @validation(constraints: String!) on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION
@@ -605,7 +679,15 @@ type CustomerEdge {
     node: Customer
     cursor: Cursor!
 }`, BuiltIn: false},
-	{Name: "../schema/mutation.graphql", Input: ``, BuiltIn: false},
+	{Name: "../schema/mutation.graphql", Input: `type Mutation{
+Account: AccountOps! @goField(forceResolver: true)
+
+}
+
+type AccountOps{
+Signup(input: NewAccountInput!): Account! @goField(forceResolver: true)
+Login(input: Login!): AccountLoginResponse! @goField(forceResolver: true)
+}`, BuiltIn: false},
 	{Name: "../schema/query.graphql", Input: `type Query{
 Account: AccountQuery! @goField(forceResolver: true)
 Customer: CustomerQuery! @goField(forceResolver: true)
@@ -655,13 +737,43 @@ func (ec *executionContext) dir_validation_args(ctx context.Context, rawArgs map
 	return args, nil
 }
 
+func (ec *executionContext) field_AccountOps_Login_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ent.Login
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNLogin2jetᚋentᚐLogin(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_AccountOps_Signup_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ent.NewAccountInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNNewAccountInput2jetᚋentᚐNewAccountInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_AccountQuery_Accounts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
+	var arg0 *entgql.Cursor[uuid.UUID]
 	if tmp, ok := rawArgs["after"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-		arg0, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		arg0, err = ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -676,10 +788,10 @@ func (ec *executionContext) field_AccountQuery_Accounts_args(ctx context.Context
 		}
 	}
 	args["first"] = arg1
-	var arg2 *string
+	var arg2 *entgql.Cursor[uuid.UUID]
 	if tmp, ok := rawArgs["before"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-		arg2, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		arg2, err = ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -709,10 +821,10 @@ func (ec *executionContext) field_AccountQuery_Accounts_args(ctx context.Context
 func (ec *executionContext) field_CustomerQuery_Customers_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
+	var arg0 *entgql.Cursor[uuid.UUID]
 	if tmp, ok := rawArgs["after"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-		arg0, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		arg0, err = ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -727,10 +839,10 @@ func (ec *executionContext) field_CustomerQuery_Customers_args(ctx context.Conte
 		}
 	}
 	args["first"] = arg1
-	var arg2 *string
+	var arg2 *entgql.Cursor[uuid.UUID]
 	if tmp, ok := rawArgs["before"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-		arg2, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		arg2, err = ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1141,9 +1253,9 @@ func (ec *executionContext) _AccountConnection_pageInfo(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.PageInfo)
+	res := resTmp.(entgql.PageInfo[uuid.UUID])
 	fc.Result = res
-	return ec.marshalNPageInfo2ᚖjetᚋentᚐPageInfo(ctx, field.Selections, res)
+	return ec.marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_AccountConnection_pageInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1294,9 +1406,9 @@ func (ec *executionContext) _AccountEdge_cursor(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(entgql.Cursor[uuid.UUID])
 	fc.Result = res
-	return ec.marshalNCursor2string(ctx, field.Selections, res)
+	return ec.marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_AccountEdge_cursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1400,6 +1512,136 @@ func (ec *executionContext) fieldContext_AccountLoginResponse_status(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _AccountOps_Signup(ctx context.Context, field graphql.CollectedField, obj *ent.AccountOps) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountOps_Signup(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AccountOps().Signup(rctx, obj, fc.Args["input"].(ent.NewAccountInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Account)
+	fc.Result = res
+	return ec.marshalNAccount2ᚖjetᚋentᚐAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountOps_Signup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountOps",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Account_id(ctx, field)
+			case "email":
+				return ec.fieldContext_Account_email(ctx, field)
+			case "password":
+				return ec.fieldContext_Account_password(ctx, field)
+			case "role":
+				return ec.fieldContext_Account_role(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Account_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Account_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_AccountOps_Signup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AccountOps_Login(ctx context.Context, field graphql.CollectedField, obj *ent.AccountOps) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountOps_Login(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AccountOps().Login(rctx, obj, fc.Args["input"].(ent.Login))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.AccountLoginResponse)
+	fc.Result = res
+	return ec.marshalNAccountLoginResponse2ᚖjetᚋentᚐAccountLoginResponse(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountOps_Login(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountOps",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "token":
+				return ec.fieldContext_AccountLoginResponse_token(ctx, field)
+			case "status":
+				return ec.fieldContext_AccountLoginResponse_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AccountLoginResponse", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_AccountOps_Login_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AccountQuery_Accounts(ctx context.Context, field graphql.CollectedField, obj *ent.AccountQuery) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AccountQuery_Accounts(ctx, field)
 	if err != nil {
@@ -1415,7 +1657,7 @@ func (ec *executionContext) _AccountQuery_Accounts(ctx context.Context, field gr
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.AccountQuery().Accounts(rctx, obj, fc.Args["after"].(*string), fc.Args["first"].(*int), fc.Args["before"].(*string), fc.Args["last"].(*int), fc.Args["orderBy"].(*ent.AccountOrder))
+			return ec.resolvers.AccountQuery().Accounts(rctx, obj, fc.Args["after"].(*entgql.Cursor[uuid.UUID]), fc.Args["first"].(*int), fc.Args["before"].(*entgql.Cursor[uuid.UUID]), fc.Args["last"].(*int), fc.Args["orderBy"].(*ent.AccountOrder))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			role, err := ec.unmarshalNRole2jetᚋentᚐRole(ctx, "Administrator")
@@ -1950,9 +2192,9 @@ func (ec *executionContext) _CustomerConnection_pageInfo(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.PageInfo)
+	res := resTmp.(entgql.PageInfo[uuid.UUID])
 	fc.Result = res
-	return ec.marshalNPageInfo2ᚖjetᚋentᚐPageInfo(ctx, field.Selections, res)
+	return ec.marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_CustomerConnection_pageInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2109,9 +2351,9 @@ func (ec *executionContext) _CustomerEdge_cursor(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(entgql.Cursor[uuid.UUID])
 	fc.Result = res
-	return ec.marshalNCursor2string(ctx, field.Selections, res)
+	return ec.marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_CustomerEdge_cursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2141,7 +2383,7 @@ func (ec *executionContext) _CustomerQuery_Customers(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.CustomerQuery().Customers(rctx, obj, fc.Args["after"].(*string), fc.Args["first"].(*int), fc.Args["before"].(*string), fc.Args["last"].(*int), fc.Args["orderBy"].(*ent.CustomerOrder))
+		return ec.resolvers.CustomerQuery().Customers(rctx, obj, fc.Args["after"].(*entgql.Cursor[uuid.UUID]), fc.Args["first"].(*int), fc.Args["before"].(*entgql.Cursor[uuid.UUID]), fc.Args["last"].(*int), fc.Args["orderBy"].(*ent.CustomerOrder))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2190,7 +2432,57 @@ func (ec *executionContext) fieldContext_CustomerQuery_Customers(ctx context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *ent.PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_Account(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_Account(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Account(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.AccountOps)
+	fc.Result = res
+	return ec.marshalNAccountOps2ᚖjetᚋentᚐAccountOps(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_Account(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Signup":
+				return ec.fieldContext_AccountOps_Signup(ctx, field)
+			case "Login":
+				return ec.fieldContext_AccountOps_Login(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AccountOps", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *entgql.PageInfo[uuid.UUID]) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasNextPage(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2234,7 +2526,7 @@ func (ec *executionContext) fieldContext_PageInfo_hasNextPage(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field graphql.CollectedField, obj *ent.PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field graphql.CollectedField, obj *entgql.PageInfo[uuid.UUID]) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2278,7 +2570,7 @@ func (ec *executionContext) fieldContext_PageInfo_hasPreviousPage(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field graphql.CollectedField, obj *ent.PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field graphql.CollectedField, obj *entgql.PageInfo[uuid.UUID]) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_startCursor(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2301,9 +2593,9 @@ func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*entgql.Cursor[uuid.UUID])
 	fc.Result = res
-	return ec.marshalOCursor2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PageInfo_startCursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2319,7 +2611,7 @@ func (ec *executionContext) fieldContext_PageInfo_startCursor(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graphql.CollectedField, obj *ent.PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graphql.CollectedField, obj *entgql.PageInfo[uuid.UUID]) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_endCursor(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2342,9 +2634,9 @@ func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*entgql.Cursor[uuid.UUID])
 	fc.Result = res
-	return ec.marshalOCursor2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PageInfo_endCursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4376,7 +4668,7 @@ func (ec *executionContext) unmarshalInputAccountOrder(ctx context.Context, obj 
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
-			data, err := ec.unmarshalNOrderDirection2jetᚋentᚐOrderDirection(ctx, v)
+			data, err := ec.unmarshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4488,7 +4780,7 @@ func (ec *executionContext) unmarshalInputCustomerOrder(ctx context.Context, obj
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
-			data, err := ec.unmarshalNOrderDirection2jetᚋentᚐOrderDirection(ctx, v)
+			data, err := ec.unmarshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4540,6 +4832,62 @@ func (ec *executionContext) unmarshalInputLogin(ctx context.Context, obj interfa
 				return it, err
 			}
 			it.Password = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputNewAccountInput(ctx context.Context, obj interface{}) (ent.NewAccountInput, error) {
+	var it ent.NewAccountInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"customer", "email", "password", "role"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "customer":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("customer"))
+			data, err := ec.unmarshalNCustomerInput2ᚖjetᚋentᚐCustomerInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Customer = data
+		case "email":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Email = data
+		case "password":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Password = data
+		case "role":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
+			data, err := ec.unmarshalNRole2jetᚋentᚐRole(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Role = data
 		}
 	}
 
@@ -4788,6 +5136,67 @@ func (ec *executionContext) _AccountLoginResponse(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var accountOpsImplementors = []string{"AccountOps"}
+
+func (ec *executionContext) _AccountOps(ctx context.Context, sel ast.SelectionSet, obj *ent.AccountOps) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, accountOpsImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AccountOps")
+		case "Signup":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AccountOps_Signup(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "Login":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AccountOps_Login(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5082,9 +5491,48 @@ func (ec *executionContext) _CustomerQuery(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		innerCtx := graphql.WithRootFieldContext(ctx, &graphql.RootFieldContext{
+			Object: field.Name,
+			Field:  field,
+		})
+
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "Account":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_Account(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var pageInfoImplementors = []string{"PageInfo"}
 
-func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *ent.PageInfo) graphql.Marshaler {
+func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *entgql.PageInfo[uuid.UUID]) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, pageInfoImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -5531,6 +5979,20 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNAccount2jetᚋentᚐAccount(ctx context.Context, sel ast.SelectionSet, v ent.Account) graphql.Marshaler {
+	return ec._Account(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAccount2ᚖjetᚋentᚐAccount(ctx context.Context, sel ast.SelectionSet, v *ent.Account) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Account(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNAccountConnection2jetᚋentᚐAccountConnection(ctx context.Context, sel ast.SelectionSet, v ent.AccountConnection) graphql.Marshaler {
 	return ec._AccountConnection(ctx, sel, &v)
 }
@@ -5543,6 +6005,34 @@ func (ec *executionContext) marshalNAccountConnection2ᚖjetᚋentᚐAccountConn
 		return graphql.Null
 	}
 	return ec._AccountConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAccountLoginResponse2jetᚋentᚐAccountLoginResponse(ctx context.Context, sel ast.SelectionSet, v ent.AccountLoginResponse) graphql.Marshaler {
+	return ec._AccountLoginResponse(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAccountLoginResponse2ᚖjetᚋentᚐAccountLoginResponse(ctx context.Context, sel ast.SelectionSet, v *ent.AccountLoginResponse) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AccountLoginResponse(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAccountOps2jetᚋentᚐAccountOps(ctx context.Context, sel ast.SelectionSet, v ent.AccountOps) graphql.Marshaler {
+	return ec._AccountOps(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAccountOps2ᚖjetᚋentᚐAccountOps(ctx context.Context, sel ast.SelectionSet, v *ent.AccountOps) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AccountOps(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNAccountQuery2jetᚋentᚐAccountQuery(ctx context.Context, sel ast.SelectionSet, v ent.AccountQuery) graphql.Marshaler {
@@ -5574,19 +6064,14 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) unmarshalNCursor2string(ctx context.Context, v interface{}) (string, error) {
-	res, err := graphql.UnmarshalString(v)
+func (ec *executionContext) unmarshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, v interface{}) (entgql.Cursor[uuid.UUID], error) {
+	var res entgql.Cursor[uuid.UUID]
+	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNCursor2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
-	res := graphql.MarshalString(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
+func (ec *executionContext) marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, sel ast.SelectionSet, v entgql.Cursor[uuid.UUID]) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNCustomerConnection2jetᚋentᚐCustomerConnection(ctx context.Context, sel ast.SelectionSet, v ent.CustomerConnection) graphql.Marshaler {
@@ -5662,24 +6147,28 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
-func (ec *executionContext) unmarshalNOrderDirection2jetᚋentᚐOrderDirection(ctx context.Context, v interface{}) (ent.OrderDirection, error) {
-	var res ent.OrderDirection
+func (ec *executionContext) unmarshalNLogin2jetᚋentᚐLogin(ctx context.Context, v interface{}) (ent.Login, error) {
+	res, err := ec.unmarshalInputLogin(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNNewAccountInput2jetᚋentᚐNewAccountInput(ctx context.Context, v interface{}) (ent.NewAccountInput, error) {
+	res, err := ec.unmarshalInputNewAccountInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx context.Context, v interface{}) (entgql.OrderDirection, error) {
+	var res entgql.OrderDirection
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNOrderDirection2jetᚋentᚐOrderDirection(ctx context.Context, sel ast.SelectionSet, v ent.OrderDirection) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx context.Context, sel ast.SelectionSet, v entgql.OrderDirection) graphql.Marshaler {
 	return v
 }
 
-func (ec *executionContext) marshalNPageInfo2ᚖjetᚋentᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *ent.PageInfo) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._PageInfo(ctx, sel, v)
+func (ec *executionContext) marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v entgql.PageInfo[uuid.UUID]) graphql.Marshaler {
+	return ec._PageInfo(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalNRole2jetᚋentᚐRole(ctx context.Context, v interface{}) (ent.Role, error) {
@@ -6101,20 +6590,20 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) unmarshalOCursor2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+func (ec *executionContext) unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, v interface{}) (*entgql.Cursor[uuid.UUID], error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := graphql.UnmarshalString(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
+	var res = new(entgql.Cursor[uuid.UUID])
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOCursor2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+func (ec *executionContext) marshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, sel ast.SelectionSet, v *entgql.Cursor[uuid.UUID]) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	res := graphql.MarshalString(*v)
-	return res
+	return v
 }
 
 func (ec *executionContext) marshalOCustomer2ᚖjetᚋentᚐCustomer(ctx context.Context, sel ast.SelectionSet, v *ent.Customer) graphql.Marshaler {

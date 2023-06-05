@@ -1,0 +1,9 @@
+type Mutation{
+Account: AccountOps! @goField(forceResolver: true)
+
+}
+
+type AccountOps{
+Signup(input: NewAccountInput!): Account! @goField(forceResolver: true)
+Login(input: Login!): AccountLoginResponse! @goField(forceResolver: true)
+}

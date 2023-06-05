@@ -1,9 +1,38 @@
 syntax = "proto3";
 package training;
 option go_package = "./;pb";
+import "google/protobuf/timestamp.proto";
 
 service CustomerService{
-
+rpc CreateCustomer (CreateCustomerRequest) returns (Customer);
 }
 
-message Customer{}
+enum Gender {
+    Male = 0;
+    Female = 1;
+    Other = 2;
+}
+
+message Customer{
+    string id = 1;
+    string name = 2;
+    string citizen_id = 3;
+    string phone = 4;
+    string address = 5;
+    Gender gender = 6;
+    google.protobuf.Timestamp dob = 7;
+    google.protobuf.Timestamp created_at = 8;
+    google.protobuf.Timestamp updated_at = 9;
+}
+
+
+message CreateCustomerRequest {
+    string name = 1;
+    string citizen_id = 2;
+    string phone = 3;
+    string address = 4;
+     Gender gender = 5;
+    google.protobuf.Timestamp dob = 6;
+}
+
+

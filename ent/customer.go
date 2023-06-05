@@ -47,6 +47,10 @@ type CustomerEdges struct {
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
+	// totalCount holds the count of the edges above.
+	totalCount [1]map[string]int
+
+	namedAccounts map[string][]*Account
 }
 
 // AccountsOrErr returns the Accounts value or an error if the edge
@@ -204,6 +208,30 @@ func (c *Customer) String() string {
 	builder.WriteString(c.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
+}
+
+// NamedAccounts returns the Accounts named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (c *Customer) NamedAccounts(name string) ([]*Account, error) {
+	if c.Edges.namedAccounts == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := c.Edges.namedAccounts[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (c *Customer) appendNamedAccounts(name string, edges ...*Account) {
+	if c.Edges.namedAccounts == nil {
+		c.Edges.namedAccounts = make(map[string][]*Account)
+	}
+	if len(edges) == 0 {
+		c.Edges.namedAccounts[name] = []*Account{}
+	} else {
+		c.Edges.namedAccounts[name] = append(c.Edges.namedAccounts[name], edges...)
+	}
 }
 
 // Customers is a parsable slice of Customer.

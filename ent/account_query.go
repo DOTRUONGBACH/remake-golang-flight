@@ -25,6 +25,8 @@ type AccountQuery struct {
 	predicates   []predicate.Account
 	withAccOwner *CustomerQuery
 	withFKs      bool
+	modifiers    []func(*sql.Selector)
+	loadTotal    []func(context.Context, []*Account) error
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -391,6 +393,9 @@ func (aq *AccountQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Acco
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(aq.modifiers) > 0 {
+		_spec.Modifiers = aq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -403,6 +408,11 @@ func (aq *AccountQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Acco
 	if query := aq.withAccOwner; query != nil {
 		if err := aq.loadAccOwner(ctx, query, nodes, nil,
 			func(n *Account, e *Customer) { n.Edges.AccOwner = e }); err != nil {
+			return nil, err
+		}
+	}
+	for i := range aq.loadTotal {
+		if err := aq.loadTotal[i](ctx, nodes); err != nil {
 			return nil, err
 		}
 	}
@@ -444,6 +454,9 @@ func (aq *AccountQuery) loadAccOwner(ctx context.Context, query *CustomerQuery, 
 
 func (aq *AccountQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := aq.querySpec()
+	if len(aq.modifiers) > 0 {
+		_spec.Modifiers = aq.modifiers
+	}
 	_spec.Node.Columns = aq.ctx.Fields
 	if len(aq.ctx.Fields) > 0 {
 		_spec.Unique = aq.ctx.Unique != nil && *aq.ctx.Unique

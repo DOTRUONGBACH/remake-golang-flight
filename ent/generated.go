@@ -9,36 +9,14 @@ import (
 	"time"
 )
 
-type AccountConnection struct {
-	Edges      []*AccountEdge `json:"edges,omitempty"`
-	PageInfo   *PageInfo      `json:"pageInfo"`
-	TotalCount int            `json:"totalCount"`
-}
-
-type AccountEdge struct {
-	Node   *Account `json:"node,omitempty"`
-	Cursor string   `json:"cursor"`
-}
-
 type AccountLoginResponse struct {
 	Token  string `json:"token"`
 	Status bool   `json:"status"`
 }
 
-type AccountOrder struct {
-	Direction OrderDirection     `json:"direction"`
-	Field     *AccountOrderField `json:"field,omitempty"`
-}
-
-type CustomerConnection struct {
-	Edges      []*CustomerEdge `json:"edges,omitempty"`
-	PageInfo   *PageInfo       `json:"pageInfo"`
-	TotalCount int             `json:"totalCount"`
-}
-
-type CustomerEdge struct {
-	Node   *Customer `json:"node,omitempty"`
-	Cursor string    `json:"cursor"`
+type AccountOps struct {
+	Signup *Account              `json:"Signup"`
+	Login  *AccountLoginResponse `json:"Login"`
 }
 
 type CustomerInput struct {
@@ -50,21 +28,16 @@ type CustomerInput struct {
 	Dob       time.Time      `json:"dob"`
 }
 
-type CustomerOrder struct {
-	Direction OrderDirection      `json:"direction"`
-	Field     *CustomerOrderField `json:"field,omitempty"`
-}
-
 type Login struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-type PageInfo struct {
-	HasNextPage     bool    `json:"hasNextPage"`
-	HasPreviousPage bool    `json:"hasPreviousPage"`
-	StartCursor     *string `json:"startCursor,omitempty"`
-	EndCursor       *string `json:"endCursor,omitempty"`
+type NewAccountInput struct {
+	Customer *CustomerInput `json:"customer"`
+	Email    string         `json:"email"`
+	Password string         `json:"password"`
+	Role     Role           `json:"role"`
 }
 
 type Signup struct {
@@ -72,51 +45,6 @@ type Signup struct {
 	Email    string         `json:"email"`
 	Password string         `json:"password"`
 	Role     Role           `json:"role"`
-}
-
-type AccountOrderField string
-
-const (
-	AccountOrderFieldID        AccountOrderField = "ID"
-	AccountOrderFieldEmail     AccountOrderField = "EMAIL"
-	AccountOrderFieldCreatedAt AccountOrderField = "CREATED_AT"
-	AccountOrderFieldUpdatedAt AccountOrderField = "UPDATED_AT"
-)
-
-var AllAccountOrderField = []AccountOrderField{
-	AccountOrderFieldID,
-	AccountOrderFieldEmail,
-	AccountOrderFieldCreatedAt,
-	AccountOrderFieldUpdatedAt,
-}
-
-func (e AccountOrderField) IsValid() bool {
-	switch e {
-	case AccountOrderFieldID, AccountOrderFieldEmail, AccountOrderFieldCreatedAt, AccountOrderFieldUpdatedAt:
-		return true
-	}
-	return false
-}
-
-func (e AccountOrderField) String() string {
-	return string(e)
-}
-
-func (e *AccountOrderField) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = AccountOrderField(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid AccountOrderField", str)
-	}
-	return nil
-}
-
-func (e AccountOrderField) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 type AccountStatus string
@@ -203,53 +131,6 @@ func (e CustomerGender) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type CustomerOrderField string
-
-const (
-	CustomerOrderFieldID        CustomerOrderField = "ID"
-	CustomerOrderFieldName      CustomerOrderField = "NAME"
-	CustomerOrderFieldEmail     CustomerOrderField = "EMAIL"
-	CustomerOrderFieldCreatedAt CustomerOrderField = "CREATED_AT"
-	CustomerOrderFieldUpdatedAt CustomerOrderField = "UPDATED_AT"
-)
-
-var AllCustomerOrderField = []CustomerOrderField{
-	CustomerOrderFieldID,
-	CustomerOrderFieldName,
-	CustomerOrderFieldEmail,
-	CustomerOrderFieldCreatedAt,
-	CustomerOrderFieldUpdatedAt,
-}
-
-func (e CustomerOrderField) IsValid() bool {
-	switch e {
-	case CustomerOrderFieldID, CustomerOrderFieldName, CustomerOrderFieldEmail, CustomerOrderFieldCreatedAt, CustomerOrderFieldUpdatedAt:
-		return true
-	}
-	return false
-}
-
-func (e CustomerOrderField) String() string {
-	return string(e)
-}
-
-func (e *CustomerOrderField) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = CustomerOrderField(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid CustomerOrderField", str)
-	}
-	return nil
-}
-
-func (e CustomerOrderField) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
 type Gender string
 
 const (
@@ -290,47 +171,6 @@ func (e *Gender) UnmarshalGQL(v interface{}) error {
 }
 
 func (e Gender) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type OrderDirection string
-
-const (
-	OrderDirectionAsc  OrderDirection = "ASC"
-	OrderDirectionDesc OrderDirection = "DESC"
-)
-
-var AllOrderDirection = []OrderDirection{
-	OrderDirectionAsc,
-	OrderDirectionDesc,
-}
-
-func (e OrderDirection) IsValid() bool {
-	switch e {
-	case OrderDirectionAsc, OrderDirectionDesc:
-		return true
-	}
-	return false
-}
-
-func (e OrderDirection) String() string {
-	return string(e)
-}
-
-func (e *OrderDirection) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = OrderDirection(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid OrderDirection", str)
-	}
-	return nil
-}
-
-func (e OrderDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

@@ -20,11 +20,14 @@ import (
 // CustomerQuery is the builder for querying Customer entities.
 type CustomerQuery struct {
 	config
-	ctx          *QueryContext
-	order        []customer.OrderOption
-	inters       []Interceptor
-	predicates   []predicate.Customer
-	withAccounts *AccountQuery
+	ctx               *QueryContext
+	order             []customer.OrderOption
+	inters            []Interceptor
+	predicates        []predicate.Customer
+	withAccounts      *AccountQuery
+	modifiers         []func(*sql.Selector)
+	loadTotal         []func(context.Context, []*Customer) error
+	withNamedAccounts map[string]*AccountQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -384,6 +387,9 @@ func (cq *CustomerQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cus
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(cq.modifiers) > 0 {
+		_spec.Modifiers = cq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -397,6 +403,18 @@ func (cq *CustomerQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cus
 		if err := cq.loadAccounts(ctx, query, nodes,
 			func(n *Customer) { n.Edges.Accounts = []*Account{} },
 			func(n *Customer, e *Account) { n.Edges.Accounts = append(n.Edges.Accounts, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range cq.withNamedAccounts {
+		if err := cq.loadAccounts(ctx, query, nodes,
+			func(n *Customer) { n.appendNamedAccounts(name) },
+			func(n *Customer, e *Account) { n.appendNamedAccounts(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for i := range cq.loadTotal {
+		if err := cq.loadTotal[i](ctx, nodes); err != nil {
 			return nil, err
 		}
 	}
@@ -437,6 +455,9 @@ func (cq *CustomerQuery) loadAccounts(ctx context.Context, query *AccountQuery, 
 
 func (cq *CustomerQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := cq.querySpec()
+	if len(cq.modifiers) > 0 {
+		_spec.Modifiers = cq.modifiers
+	}
 	_spec.Node.Columns = cq.ctx.Fields
 	if len(cq.ctx.Fields) > 0 {
 		_spec.Unique = cq.ctx.Unique != nil && *cq.ctx.Unique
@@ -514,6 +535,20 @@ func (cq *CustomerQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithNamedAccounts tells the query-builder to eager-load the nodes that are connected to the "accounts"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (cq *CustomerQuery) WithNamedAccounts(name string, opts ...func(*AccountQuery)) *CustomerQuery {
+	query := (&AccountClient{config: cq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if cq.withNamedAccounts == nil {
+		cq.withNamedAccounts = make(map[string]*AccountQuery)
+	}
+	cq.withNamedAccounts[name] = query
+	return cq
 }
 
 // CustomerGroupBy is the group-by builder for Customer entities.

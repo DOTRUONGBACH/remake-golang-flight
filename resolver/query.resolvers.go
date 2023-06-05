@@ -9,15 +9,18 @@ import (
 	"fmt"
 	"jet/ent"
 	graphql1 "jet/graphql"
+
+	"entgo.io/contrib/entgql"
+	"github.com/google/uuid"
 )
 
 // Accounts is the resolver for the Accounts field.
-func (r *accountQueryResolver) Accounts(ctx context.Context, obj *ent.AccountQuery, after *string, first *int, before *string, last *int, orderBy *ent.AccountOrder) (*ent.AccountConnection, error) {
-	return r.client
+func (r *accountQueryResolver) Accounts(ctx context.Context, obj *ent.AccountQuery, after *entgql.Cursor[uuid.UUID], first *int, before *entgql.Cursor[uuid.UUID], last *int, orderBy *ent.AccountOrder) (*ent.AccountConnection, error) {
+	return r.client.Account.Query().Paginate(ctx, after, first, before, last, ent.WithAccountOrder(orderBy))
 }
 
 // Customers is the resolver for the Customers field.
-func (r *customerQueryResolver) Customers(ctx context.Context, obj *ent.CustomerQuery, after *string, first *int, before *string, last *int, orderBy *ent.CustomerOrder) (*ent.CustomerConnection, error) {
+func (r *customerQueryResolver) Customers(ctx context.Context, obj *ent.CustomerQuery, after *entgql.Cursor[uuid.UUID], first *int, before *entgql.Cursor[uuid.UUID], last *int, orderBy *ent.CustomerOrder) (*ent.CustomerConnection, error) {
 	panic(fmt.Errorf("not implemented: Customers - Customers"))
 }
 

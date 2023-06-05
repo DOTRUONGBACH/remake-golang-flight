@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"jet/grpc/account-service/repository"
+	"jet/grpc/account_grpc/repository"
 	"jet/internal/jwt"
 	"jet/internal/util"
 	"jet/pb"
@@ -22,7 +22,7 @@ func NewAccountHander(AccountRepository repository.AccountRepository) (*AccountS
 	}, nil
 }
 
-func (as AccountService) SignUp(ctx context.Context, model *pb.SingupRequest) (*pb.Account, error) {
+func (as AccountService) Signup(ctx context.Context, model *pb.SingupRequest) (*pb.Account, error) {
 	res, err := as.AccountRepository.CreateAccount(ctx, model)
 
 	if err != nil {
@@ -38,7 +38,7 @@ func (as AccountService) SignUp(ctx context.Context, model *pb.SingupRequest) (*
 		UpdateAt:  timestamppb.New(res.UpdatedAt)}, nil
 }
 
-func (as AccountService) LogIn(ctx context.Context, model *pb.LoginRequest) (*pb.LoginResponse, error) {
+func (as AccountService) Login(ctx context.Context, model *pb.LoginRequest) (*pb.LoginResponse, error) {
 	user, err := as.AccountRepository.GetAccountByEmail(ctx, &pb.GetAccountByEmailRequest{Email: model.Email})
 	if err != nil {
 		log.Print("acc does not exist: ", err)

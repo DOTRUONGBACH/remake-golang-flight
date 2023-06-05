@@ -1,8 +1,8 @@
 package main
 
 import (
-	"jet/grpc/account-service/handler"
-	"jet/grpc/account-service/repository"
+	"jet/grpc/account_grpc/handler"
+	"jet/grpc/account_grpc/repository"
 	"jet/pb"
 	"log"
 	"net"

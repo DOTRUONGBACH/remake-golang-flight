@@ -60,3 +60,10 @@ type AccountLoginResponse{
     token: String!
     status: Boolean!
 }
+
+input NewAccountInput {
+    customer: CustomerInput!
+    email: String!
+    password: String!
+    role: Role!
+}

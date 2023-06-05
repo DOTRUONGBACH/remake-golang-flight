@@ -7,6 +7,7 @@ import (
 	"jet/middleware"
 	"jet/middleware/auth"
 	"jet/pb"
+	"jet/resolver"
 	"log"
 	"os"
 	"time"
@@ -17,7 +18,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
-	"github.com/go-playground/validator"
+	"github.com/go-playground/validator/v10"
+
+	en_translations "github.com/go-playground/validator/v10/translations/en"
+	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -57,6 +61,7 @@ func NewServerCmd(configs *config.Configurations, logger *zap.Logger) *cobra.Com
 			validationTranslator, _ := uni.GetTranslator("en")
 
 			accountService := pb.NewAccountServiceClient(conn1)
+			customerService := pb.NewCustomerServiceClient(conn1)
 
 			// Register default translation for validator
 			err = en_translations.RegisterDefaultTranslations(validator, validationTranslator)
@@ -66,7 +71,7 @@ func NewServerCmd(configs *config.Configurations, logger *zap.Logger) *cobra.Com
 			}
 
 			// GraphQL schema resolver handler.
-			resolverHandler := handler.NewDefaultServer(resolver.NewSchema(db, validator, validationTranslator, logger, accountService))
+			resolverHandler := handler.NewDefaultServer(resolver.NewSchema(db, validator, validationTranslator, logger, customerService, accountService))
 			// Handler for GraphQL Playground
 			playgroundHandler := playground.Handler("GraphQL Playground", "/graphql")
 

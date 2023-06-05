@@ -1,7 +1,7 @@
 version: "3"
 
 networks:
-  golang-boilerplate:
+  jet:
     driver: bridge
 
 volumes:
@@ -13,7 +13,7 @@ services:
     image: postgres:13.8
     restart: always
     environment:
-      POSTGRES_DB: postgres
+      POSTGRES_DB: flight
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
