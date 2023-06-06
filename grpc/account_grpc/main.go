@@ -7,13 +7,14 @@ import (
 	"log"
 	"net"
 
+	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 func main() {
-	listen, err := net.Listen("tcp", "1000")
+	listen, err := net.Listen("tcp", ":2224")
 	if err != nil {
 		panic(err)
 	}
@@ -38,6 +39,8 @@ func main() {
 	}
 	reflection.Register(s)
 	pb.RegisterAccountServiceServer(s, h)
+
+	log.Println("CUSTOMER server is listening at port 2224...")
 	s.Serve(listen)
 
 }
