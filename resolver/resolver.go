@@ -24,14 +24,15 @@ type Resolver struct {
 	validator            *validator.Validate
 	validationTranslator ut.Translator
 	logger               *zap.Logger
-	// customerService      services.CustomerServiceClient
-	accountService services.AccountServiceClient
+	customerService      services.CustomerServiceClient
+	accountService       services.AccountServiceClient
 }
 
 func NewSchema(client *ent.Client, validator *validator.Validate, validationTranslator ut.Translator, logger *zap.Logger, grpcCustomer pb.CustomerServiceClient, grpcAccount pb.AccountServiceClient) graphql.ExecutableSchema {
+	customerService := services.NewCustomerHandler(grpcCustomer)
 	accountService := services.NewAccountHandler(grpcAccount, grpcCustomer)
 	return generated.NewExecutableSchema(generated.Config{Resolvers: &Resolver{
-		client: client, validator: validator, validationTranslator: validationTranslator, logger: logger, accountService: accountService,
+		client: client, validator: validator, validationTranslator: validationTranslator, logger: logger, accountService: accountService, customerService: customerService,
 	}})
 }
 

@@ -48,20 +48,28 @@ func NewServerCmd(configs *config.Configurations, logger *zap.Logger) *cobra.Com
 				logger.Error("Failed to creating db schema from the automation migration tool", zap.Error(err))
 				os.Exit(1)
 			}
+
 			//Conenct to Customer server
-			conn1, err := grpc.Dial(":1000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn1, err := grpc.Dial(":2223", grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				log.Fatalf("Failed connecting to Customer server: %s", err)
 			}
 			defer conn1.Close()
+
+			//Conenct to Customer server
+			conn2, err := grpc.Dial(":2224", grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				log.Fatalf("Failed connecting to Customer server: %s", err)
+			}
+			defer conn2.Close()
+
 			// Create validator
 			validator := validator.New()
 			en := en.New()
 			uni := ut.New(en, en)
 			validationTranslator, _ := uni.GetTranslator("en")
-
-			accountService := pb.NewAccountServiceClient(conn1)
 			customerService := pb.NewCustomerServiceClient(conn1)
+			accountService := pb.NewAccountServiceClient(conn2)
 
 			// Register default translation for validator
 			err = en_translations.RegisterDefaultTranslations(validator, validationTranslator)

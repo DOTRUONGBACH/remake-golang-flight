@@ -6,24 +6,33 @@ package resolver
 
 import (
 	"context"
-	"fmt"
 	"jet/ent"
 	graphql1 "jet/graphql"
 )
 
 // Signup is the resolver for the Signup field.
 func (r *accountOpsResolver) Signup(ctx context.Context, obj *ent.AccountOps, input ent.NewAccountInput) (*ent.Account, error) {
-	panic(fmt.Errorf("not implemented: Signup - Signup"))
+	// is_authenticated := auth.ForContext(ctx)
+
+	// if is_authenticated.Role != "Administrator" {
+	// 	return nil, util.WrapGQLUnauthenticatedError(ctx)
+	// }
+
+	return r.accountService.Signup(ctx, input)
 }
 
 // Login is the resolver for the login field.
 func (r *accountOpsResolver) Login(ctx context.Context, obj *ent.AccountOps, input ent.Login) (*ent.AccountLoginResponse, error) {
-	panic(fmt.Errorf("not implemented: Login - login"))
+	res, err := r.accountService.Login(ctx, input)
+	return &ent.AccountLoginResponse{
+		Token:  res.Token,
+		Status: res.Status,
+	}, err
 }
 
 // Account is the resolver for the Account field.
 func (r *mutationResolver) Account(ctx context.Context) (*ent.AccountOps, error) {
-	panic(fmt.Errorf("not implemented: Account - Account"))
+	return &ent.AccountOps{}, nil
 }
 
 // AccountOps returns graphql1.AccountOpsResolver implementation.
@@ -34,13 +43,3 @@ func (r *Resolver) Mutation() graphql1.MutationResolver { return &mutationResolv
 
 type accountOpsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//     it when you're done.
-//   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *accountOpsResolver) NewAccount(ctx context.Context, obj *ent.AccountOps, input ent.NewAccountInput) (*ent.Account, error) {
-	panic(fmt.Errorf("not implemented: NewAccount - newAccount"))
-}

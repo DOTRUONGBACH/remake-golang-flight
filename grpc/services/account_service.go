@@ -48,7 +48,7 @@ func (a AccountHandler) Signup(ctx context.Context, input ent.NewAccountInput) (
 		CitizenId: input.Customer.CitizenID,
 		Phone:     input.Customer.Phone,
 		Address:   input.Customer.Address,
-		Gender:    pb.Gender(pb.Gender_value[input.Customer.Gender.String()]),
+		Gender:    pb.Gender(pb.Gender_value[string(input.Customer.Gender)]),
 	})
 
 	if err != nil {

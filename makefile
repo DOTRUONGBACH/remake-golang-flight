@@ -69,8 +69,12 @@ teardown:
 buildServer:
 	go build -gcflags="all=-N -l" -o server cmd/main.go
 
-
 dlv:
 	/home/jet/go/bin/dlv --listen=:4000 --headless=true --api-version=2 exec ./server api
 
 debug: buildServer dlv
+
+accountServer:
+	go build -gcflags="all=-N -l" -o server grpc/account_grpc/main.go
+
+debugAccount: accountServer dlv 

@@ -23,7 +23,7 @@ func main() {
 	defer logger.Sync()
 
 	s := grpc.NewServer()
-	log.Println(s, listen)
+	// log.Println(s, listen)
 	// accountrepo, err :=
 
 	accountRepository, err := repository.NewPostgresDB("host=localhost port=5432 user=postgres dbname=flight password=postgres sslmode=disable")
@@ -40,7 +40,7 @@ func main() {
 	reflection.Register(s)
 	pb.RegisterAccountServiceServer(s, h)
 
-	log.Println("CUSTOMER server is listening at port 2224...")
+	log.Println("ACCOUNT server is listening at port 2224...")
 	s.Serve(listen)
 
 }
