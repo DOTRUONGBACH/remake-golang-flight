@@ -24,7 +24,7 @@ func (r *customerResolver) Name(ctx context.Context, obj *ent.Customer) (string,
 
 // Gender is the resolver for the gender field.
 func (r *customerResolver) Gender(ctx context.Context, obj *ent.Customer) (ent.CustomerGender, error) {
-	panic(fmt.Errorf("not implemented: Gender - gender"))
+	return ent.CustomerGender(obj.Gender), nil
 }
 
 // Dob is the resolver for the dob field.
