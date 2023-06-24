@@ -70,7 +70,7 @@ buildServer:
 	go build -gcflags="all=-N -l" -o server cmd/main.go
 
 dlv:
-	/home/jet/go/bin/dlv --listen=:4000 --headless=true --api-version=2 exec ./server api
+	/home/bach/go/bin/dlv --listen=:4000 --headless=true --api-version=2 exec ./server api
 
 debug: buildServer dlv
 

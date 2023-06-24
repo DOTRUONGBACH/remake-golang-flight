@@ -88,9 +88,9 @@ type Gender string
 
 // Gender values.
 const (
-	GenderMale   Gender = "male"
-	GenderFemale Gender = "female"
-	GenderOther  Gender = "other"
+	GenderMale   Gender = "Male"
+	GenderFemale Gender = "Female"
+	GenderOther  Gender = "Other"
 )
 
 func (ge Gender) String() string {

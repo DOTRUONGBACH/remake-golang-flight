@@ -39,7 +39,7 @@ var (
 		{Name: "fullname", Type: field.TypeString},
 		{Name: "phone", Type: field.TypeString},
 		{Name: "address", Type: field.TypeString},
-		{Name: "gender", Type: field.TypeEnum, Enums: []string{"male", "female", "other"}},
+		{Name: "gender", Type: field.TypeEnum, Enums: []string{"Male", "Female", "Other"}},
 		{Name: "citizen_id", Type: field.TypeString, Unique: true, Size: 12},
 		{Name: "date_of_birth", Type: field.TypeTime},
 		{Name: "created_at", Type: field.TypeTime},
